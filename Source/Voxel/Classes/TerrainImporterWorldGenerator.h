@@ -8,9 +8,9 @@
 #include "TerrainImporterWorldGenerator.generated.h"
 
 /**
- *
+ * Not working
  */
-UCLASS()
+UCLASS(Blueprintable)
 class VOXEL_API ATerrainImporterWorldGenerator : public AActor, public IVoxelWorldGenerator
 {
 	GENERATED_BODY()
