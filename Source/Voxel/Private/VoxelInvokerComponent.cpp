@@ -6,7 +6,7 @@
 #include "Engine.h"
 
 
-UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOffset(0)
+UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOffset(1000)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
