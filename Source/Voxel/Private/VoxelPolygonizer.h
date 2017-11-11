@@ -42,6 +42,9 @@ private:
 
 	int Cache2D[6][17][17][7]; // Edgeindex: 0 -> 8; 1 -> 9; 2 -> Not used; 3-6 -> 3-6
 
+	// For vertices that are EXACTLY on the grid
+	int IntegerCoordinates[17][17][17];
+
 	FORCEINLINE int Size();
 	// Step between cubes
 	FORCEINLINE int Step();

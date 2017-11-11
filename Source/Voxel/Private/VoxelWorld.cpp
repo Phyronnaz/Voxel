@@ -205,7 +205,10 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 		Data->LoadFromSaveAndGetModifiedPositions(Save, ModifiedPositions, bReset);
 		for (auto Position : ModifiedPositions)
 		{
-			UpdateChunksAtPosition(Position, true);
+			if (IsInWorld(Position))
+			{
+				UpdateChunksAtPosition(Position, true);
+			}
 		}
 		Render->ApplyUpdates();
 	}

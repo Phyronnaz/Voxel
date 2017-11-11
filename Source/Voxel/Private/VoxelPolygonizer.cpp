@@ -32,6 +32,17 @@ FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector Chu
 
 void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 {
+	for (int i = 0; i < 17; i++)
+	{
+		for (int j = 0; j < 17; j++)
+		{
+			for (int k = 0; k < 17; k++)
+			{
+				IntegerCoordinates[i][j][k] = -1;
+			}
+		}
+	}
+
 	Data->BeginGet();
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CACHE);
@@ -265,15 +276,58 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 													checkf(false, TEXT("Error in interpolation: case should not exist"));
 												}
 											}
-											VertexIndex = VerticesSize;
-											Vertices.push_front(Q);
-											Colors.push_front(FVoxelMaterial(CellMaterial.Index1, CellMaterial.Index2, Alpha).ToFColor());
-											VerticesSize++;
 
-											if (ForceVertexCreation)
+											VertexIndex = VerticesSize;
+
+											bool bCreateVertex = true;
+
+											if (!(
+												(Q.X < -KINDA_SMALL_NUMBER) || (Q.X > Size() + KINDA_SMALL_NUMBER) ||
+												(Q.Y < -KINDA_SMALL_NUMBER) || (Q.Y > Size() + KINDA_SMALL_NUMBER) ||
+												(Q.Z < -KINDA_SMALL_NUMBER) || (Q.Z > Size() + KINDA_SMALL_NUMBER)))
 											{
-												const int CachedIndex = LoadVertex(X, Y, Z, CacheDirection, EdgeIndex);
-												VerticesWithSamePosition.push_front(TPair<int32, int32>(CachedIndex, VertexIndex));
+												// Not for normal only
+
+												if (FMath::Abs(Q.X - FMath::RoundToInt(Q.X)) < KINDA_SMALL_NUMBER &&
+													FMath::Abs(Q.Y - FMath::RoundToInt(Q.Y)) < KINDA_SMALL_NUMBER &&
+													FMath::Abs(Q.Z - FMath::RoundToInt(Q.Z)) < KINDA_SMALL_NUMBER &&
+													!ForceVertexCreation)
+												{
+													Q.X = FMath::RoundToInt(Q.X);
+													Q.Y = FMath::RoundToInt(Q.Y);
+													Q.Z = FMath::RoundToInt(Q.Z);
+
+													const int IX = FMath::RoundToInt(Q.X / Step());
+													const int IY = FMath::RoundToInt(Q.Y / Step());
+													const int IZ = FMath::RoundToInt(Q.Z / Step());
+
+													check(0 <= IX && IX < 17);
+													check(0 <= IY && IY < 17);
+													check(0 <= IZ && IZ < 17);
+
+													if (IntegerCoordinates[IX][IY][IZ] == -1)
+													{
+														IntegerCoordinates[IX][IY][IZ] = VertexIndex;
+													}
+													else
+													{
+														VertexIndex = IntegerCoordinates[IX][IY][IZ];
+														bCreateVertex = false;
+													}
+												}
+											}
+
+											if (bCreateVertex)
+											{
+												Vertices.push_front(Q);
+												Colors.push_front(FVoxelMaterial(CellMaterial.Index1, CellMaterial.Index2, Alpha).ToFColor());
+												VerticesSize++;
+
+												if (ForceVertexCreation)
+												{
+													const int CachedIndex = LoadVertex(X, Y, Z, CacheDirection, EdgeIndex);
+													VerticesWithSamePosition.push_front(TPair<int32, int32>(CachedIndex, VertexIndex));
+												}
 											}
 										}
 										else
@@ -310,7 +364,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 	Data->EndGet();
 
 
-	if (VerticesSize == 0)
+	if (VerticesSize < 3)
 	{
 		// Early exit
 		OutSection.Reset();
@@ -787,6 +841,12 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 			}
 			Data->EndGet();
 		}
+	}
+
+	if (OutSection.ProcVertexBuffer.Num() < 3 || OutSection.ProcIndexBuffer.Num() == 0)
+	{
+		// Else physics thread crash
+		OutSection.Reset();
 	}
 }
 
