@@ -19,29 +19,35 @@ float UFlatWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 
 FVoxelMaterial UFlatWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
 {
-	if (Z < TerrainLayers[0].Start)
+	if (TerrainLayers.Num())
 	{
-		return FVoxelMaterial(TerrainLayers[0].Material, TerrainLayers[0].Material, 255);
-	}
-	const int LastIndex = TerrainLayers.Num() - 1;
-	if (Z >= TerrainLayers[LastIndex].Start)
-	{
-		return FVoxelMaterial(TerrainLayers[LastIndex].Material, TerrainLayers[LastIndex].Material, (LastIndex % 2 == 0) ? 255 : 0);
-	}
-	for (int i = 0; i < TerrainLayers.Num() - 1; i++)
-	{
-		if (TerrainLayers[i].Start <= Z && Z < TerrainLayers[i + 1].Start)
+		if (Z < TerrainLayers[0].Start)
 		{
-			const uint8 Alpha = FMath::Clamp<int>(255 * (TerrainLayers[i + 1].Start - 1 - Z) / FadeHeight, 0, 255);
-
-			// Alternate first material to avoid problem with alpha smoothing
-			if (i % 2 == 0)
+			return FVoxelMaterial(TerrainLayers[0].Material, TerrainLayers[0].Material, 255);
+		}
+		const int LastIndex = TerrainLayers.Num() - 1;
+		if (LastIndex >= 0)
+		{
+			if (Z >= TerrainLayers[LastIndex].Start)
 			{
-				return FVoxelMaterial(TerrainLayers[i + 1].Material, TerrainLayers[i].Material, Alpha);
+				return FVoxelMaterial(TerrainLayers[LastIndex].Material, TerrainLayers[LastIndex].Material, (LastIndex % 2 == 0) ? 255 : 0);
 			}
-			else
+		}
+		for (int i = 0; i < TerrainLayers.Num() - 1; i++)
+		{
+			if (TerrainLayers[i].Start <= Z && Z < TerrainLayers[i + 1].Start)
 			{
-				return FVoxelMaterial(TerrainLayers[i].Material, TerrainLayers[i + 1].Material, 255 - Alpha);
+				const uint8 Alpha = FMath::Clamp<int>(255 * (TerrainLayers[i + 1].Start - 1 - Z) / FadeHeight, 0, 255);
+
+				// Alternate first material to avoid problem with alpha smoothing
+				if (i % 2 == 0)
+				{
+					return FVoxelMaterial(TerrainLayers[i + 1].Material, TerrainLayers[i].Material, Alpha);
+				}
+				else
+				{
+					return FVoxelMaterial(TerrainLayers[i].Material, TerrainLayers[i + 1].Material, 255 - Alpha);
+				}
 			}
 		}
 	}
