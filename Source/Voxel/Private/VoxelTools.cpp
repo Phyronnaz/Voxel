@@ -489,11 +489,11 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 
 	{
 		Data->BeginSet();
-		for (int X = Bounds.Min.X; X < Bounds.Max.X; X++)
+		for (int X = Bounds.Min.X; X <= Bounds.Max.X; X++)
 		{
-			for (int Y = Bounds.Min.Y; Y < Bounds.Max.Y; Y++)
+			for (int Y = Bounds.Min.Y; Y <= Bounds.Max.Y; Y++)
 			{
-				for (int Z = Bounds.Min.Z; Z < Bounds.Max.Z; Z++)
+				for (int Z = Bounds.Min.Z; Z <= Bounds.Max.Z; Z++)
 				{
 					const float AssetValue = DecompressedAsset->GetValue(X, Y, Z);
 					const FVoxelMaterial AssetMaterial = DecompressedAsset->GetMaterial(X, Y, Z);

@@ -69,7 +69,7 @@ FVoxelBox FDecompressedVoxelDataAsset::GetBounds()
 
 	FVoxelBox Box;
 	Box.Min = FIntVector(-HalfSizeX, -HalfSizeY, -HalfSizeZ);
-	Box.Max = FIntVector(HalfSizeX, HalfSizeY, HalfSizeZ);
+	Box.Max = FIntVector(HalfSizeX - 1, HalfSizeY - 1, HalfSizeZ - 1);
 	return Box;
 }
 

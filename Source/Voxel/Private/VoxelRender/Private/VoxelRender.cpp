@@ -161,48 +161,13 @@ void FVoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
 {
 	check(Data->IsInWorld(Position.X, Position.Y, Position.Z));
 
-	int X = Position.X + Data->Size() / 2;
-	int Y = Position.Y + Data->Size() / 2;
-	int Z = Position.Z + Data->Size() / 2;
-
-	bool bXIsAtBorder = (X % 16 == 0) && (X != 0);
-	bool bYIsAtBorder = (Y % 16 == 0) && (Y != 0);
-	bool bZIsAtBorder = (Z % 16 == 0) && (Z != 0);
-
-	UpdateChunk(MainOctree->GetLeaf(Position), bAsync);
-
-	if (bXIsAtBorder)
-	{
-		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 0, 0)), bAsync);
-	}
-	if (bYIsAtBorder)
-	{
-		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(0, 8, 0)), bAsync);
-	}
-	if (bXIsAtBorder && bYIsAtBorder)
-	{
-		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 8, 0)), bAsync);
-	}
-	if (bZIsAtBorder)
-	{
-		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(0, 0, 8)), bAsync);
-	}
-	if (bXIsAtBorder && bZIsAtBorder)
-	{
-		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 0, 8)), bAsync);
-	}
-	if (bYIsAtBorder && bZIsAtBorder)
-	{
-		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(0, 8, 8)), bAsync);
-	}
-	if (bXIsAtBorder && bYIsAtBorder && bZIsAtBorder)
-	{
-		UpdateChunk(MainOctree->GetLeaf(Position - FIntVector(8, 8, 8)), bAsync);
-	}
+	UpdateChunksOverlappingBox(FVoxelBox(Position, Position), bAsync);
 }
 
 void FVoxelRender::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
 {
+	Box.Min -= FIntVector(2, 2, 2); // For normals
+	Box.Max += FIntVector(2, 2, 2); // For normals
 	std::forward_list<TWeakPtr<FChunkOctree>> OverlappingLeafs;
 	MainOctree->GetLeafsOverlappingBox(Box, OverlappingLeafs);
 
