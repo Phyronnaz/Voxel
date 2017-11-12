@@ -114,7 +114,7 @@ void FVoxelTcpClient::ReceiveData(TArray<uint8>& OutData)
 
 bool FVoxelTcpClient::IsValid()
 {
-	return Connection;
+	return Connection!=nullptr;
 }
 
 
