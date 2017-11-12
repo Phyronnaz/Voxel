@@ -173,5 +173,5 @@ bool FVoxelTcpServer::SendData(TArray<uint8> Data)
 
 bool FVoxelTcpServer::IsValid()
 {
-	return Connections.Num();
+	return Connections.Num()>0;
 }
