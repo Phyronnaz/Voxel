@@ -21,7 +21,6 @@ public:
 	virtual float GetDefaultValue(int X, int Y, int Z) override;
 	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
-	virtual FVector GetUpVector(int X, int Y, int Z) override;
 
 private:
 	FastNoise Noise;
