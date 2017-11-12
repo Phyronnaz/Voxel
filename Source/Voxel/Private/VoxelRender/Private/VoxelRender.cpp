@@ -230,13 +230,6 @@ void FVoxelRender::UpdateLOD()
 
 void FVoxelRender::AddFoliageUpdate(UVoxelChunkComponent* Chunk)
 {
-#if DO_CHECK
-	for (auto ChunkToDelete : ChunksToDelete)
-	{
-		//check(ChunkToDelete.Chunk != Chunk);
-	}
-#endif
-
 	FoliageUpdateNeeded.Add(Chunk);
 }
 

@@ -23,12 +23,12 @@ UVoxelChunkComponent::UVoxelChunkComponent()
 	: Render(nullptr)
 	, MeshBuilder(nullptr)
 	, Builder(nullptr)
-	, CompletedFoliageTaskCount(0)
 {
 	bCastShadowAsTwoSided = true;
 	bUseAsyncCooking = true;
 	SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	Mobility = EComponentMobility::Movable;
+	CompletedFoliageTaskCount.Reset();
 }
 
 UVoxelChunkComponent::~UVoxelChunkComponent()
@@ -239,7 +239,7 @@ bool UVoxelChunkComponent::UpdateFoliage()
 
 	if (FoliageTasks.Num() == 0)
 	{
-		CompletedFoliageTaskCount = 0;
+		CompletedFoliageTaskCount.Reset();
 
 		int GrassVarietyIndex = 0;
 		for (int Index = 0; Index < Render->World->GrassTypes.Num(); Index++)
@@ -278,8 +278,8 @@ bool UVoxelChunkComponent::UpdateFoliage()
 
 void UVoxelChunkComponent::OnFoliageComplete()
 {
-	CompletedFoliageTaskCount++;
-	if (CompletedFoliageTaskCount == FoliageTasks.Num())
+	CompletedFoliageTaskCount.Increment();
+	if (CompletedFoliageTaskCount.GetValue() == FoliageTasks.Num())
 	{
 		OnAllFoliageComplete();
 	}
@@ -290,7 +290,7 @@ void UVoxelChunkComponent::OnAllFoliageComplete()
 	check(Render);
 
 	Render->AddApplyNewFoliage(this);
-	CompletedFoliageTaskCount = 0;
+	CompletedFoliageTaskCount.Reset();
 }
 
 void UVoxelChunkComponent::ApplyNewFoliage()
@@ -409,7 +409,7 @@ void UVoxelChunkComponent::DeleteTasks()
 		delete FoliageTask;
 	}
 	FoliageTasks.Empty();
-	CompletedFoliageTaskCount = 0;
+	CompletedFoliageTaskCount.Reset();
 }
 
 void UVoxelChunkComponent::CreateBuilder()

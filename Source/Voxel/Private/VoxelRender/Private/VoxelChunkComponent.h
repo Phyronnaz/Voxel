@@ -93,7 +93,7 @@ private:
 	TSharedPtr<FChunkOctree> CurrentOctree;
 	FVoxelRender* Render;
 
-	uint32 CompletedFoliageTaskCount;
+	FThreadSafeCounter CompletedFoliageTaskCount;
 
 	void OnAllFoliageComplete();
 
