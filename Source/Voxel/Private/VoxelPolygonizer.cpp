@@ -379,7 +379,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		// Create section
 		OutSection.Reset();
 		OutSection.bEnableCollision = bComputeCollisions;
-		OutSection.bSectionVisible = true;
+		OutSection.bSectionVisible = false;
 		OutSection.SectionLocalBox.Min = -FVector::OneVector * Step();
 		OutSection.SectionLocalBox.Max = 18 * FVector::OneVector * Step();
 		OutSection.SectionLocalBox.IsValid = true;

@@ -10,6 +10,7 @@ class AVoxelWorld;
 class FVoxelData;;
 class FChunkOctree;
 class UVoxelChunkComponent;
+class UProceduralMeshComponent;
 
 struct FChunkToDelete
 {
@@ -106,6 +107,10 @@ private:
 
 	// Invokers
 	std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> VoxelInvokerComponents;
+
+
+	TArray<UProceduralMeshComponent*> CollisionComponents[2];
+	bool bCurrentCollisionComponents;
 
 
 	float TimeSinceFoliageUpdate;

@@ -4,6 +4,9 @@
 #include "VoxelRender.h"
 #include "VoxelChunkComponent.h"
 #include "ChunkOctree.h"
+#include "ProceduralMeshComponent.h"
+#include "VoxelPolygonizerForCollisions.h"
+#include "VoxelInvokerComponent.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
@@ -17,6 +20,7 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
 	, TimeSinceFoliageUpdate(0)
 	, TimeSinceLODUpdate(0)
+	, bCurrentCollisionComponents(false)
 {
 	// Add existing chunks
 	for (auto Component : ChunksParent->GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
@@ -224,6 +228,33 @@ void FVoxelRender::UpdateLOD()
 		}
 	}
 	VoxelInvokerComponents = Temp;
+
+	bCurrentCollisionComponents = !bCurrentCollisionComponents;
+	auto& CurrentComponents = CollisionComponents[bCurrentCollisionComponents];
+	int i = 0;
+	for (auto Invoker : VoxelInvokerComponents)
+	{
+		while (CurrentComponents.Num() <= i)
+		{
+			UProceduralMeshComponent* Chunk = NewObject<UProceduralMeshComponent>(ChunksParent, NAME_None, RF_Transient | RF_NonPIEDuplicateTransient);
+			Chunk->SetupAttachment(ChunksParent->GetRootComponent(), NAME_None);
+			Chunk->RegisterComponent();
+			Chunk->SetWorldScale3D(FVector::OneVector * World->GetVoxelSize());
+			CurrentComponents.Add(Chunk);
+		}
+
+		FIntVector Size(16, 16, 16);
+		FIntVector ChunkPosition = World->GlobalToLocal(Invoker->GetOwner()->GetActorLocation()) - Size / 2;
+
+		FVoxelPolygonizerForCollisions Poly(Data, ChunkPosition, Size.X, Size.Y, Size.Z);
+		FProcMeshSection Section;
+		Poly.CreateSection(Section);
+
+		CurrentComponents[i]->SetProcMeshSection(0, Section);
+		CurrentComponents[i]->SetWorldLocation(GetGlobalPosition(ChunkPosition));
+
+		i++;
+	}
 
 	MainOctree->UpdateLOD(VoxelInvokerComponents);
 }
