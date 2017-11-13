@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelProceduralMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 
 class FValueOctree;
@@ -13,7 +13,7 @@ class FVoxelPolygonizerForCollisions
 public:
 	FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition, const int SizeX, const int SizeY, const int SizeZ);
 
-	void CreateSection(FVoxelProcMeshSection& OutSection);
+	void CreateSection(FProcMeshSection& OutSection);
 
 private:
 	FVoxelData* const Data;

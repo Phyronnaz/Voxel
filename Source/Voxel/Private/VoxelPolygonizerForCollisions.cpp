@@ -24,7 +24,7 @@ FVoxelPolygonizerForCollisions::FVoxelPolygonizerForCollisions(FVoxelData* Data,
 	}
 }
 
-void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSection)
+void FVoxelPolygonizerForCollisions::CreateSection(FProcMeshSection& OutSection)
 {
 	// Create forward lists
 	std::forward_list<FVector> Vertices;
@@ -44,8 +44,6 @@ void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 				{
 					float CornerValues[8];
 
-					FVoxelMaterial CornerMaterials[8];
-
 					CornerValues[0] = GetValue(X + 0, Y + 0, Z + 0);
 					CornerValues[1] = GetValue(X + 1, Y + 0, Z + 0);
 					CornerValues[2] = GetValue(X + 0, Y + 1, Z + 0);
@@ -55,7 +53,7 @@ void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 					CornerValues[6] = GetValue(X + 0, Y + 1, Z + 1);
 					CornerValues[7] = GetValue(X + 1, Y + 1, Z + 1);
 
-					const int CaseCode =
+					const unsigned long CaseCode =
 						((CornerValues[0] > 0) << 0)
 						| ((CornerValues[1] > 0) << 1)
 						| ((CornerValues[2] > 0) << 2)
@@ -81,8 +79,6 @@ void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 						};
 
 						short ValidityMask = (X != 0) + 2 * (Y != 0) + 4 * (Z != 0);
-
-						const FVoxelMaterial CellMaterial = CornerMaterials[0];
 
 						check(0 <= CaseCode && CaseCode < 256);
 						unsigned char CellClass = Transvoxel::regularCellClass[CaseCode];
@@ -191,7 +187,7 @@ void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 		{
 			FVector Vertice = Vertices.front();
 			Vertices.pop_front();
-			OutSection.ProcVertexBuffer[i].Position = Vertice;
+			OutSection.ProcVertexBuffer[VerticesSize - 1 - i].Position = Vertice;
 		}
 
 		int i = 0;
@@ -204,9 +200,9 @@ void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 			const int C = Triangles.front();
 			Triangles.pop_front();
 
-			OutSection.ProcIndexBuffer[i] = A;
+			OutSection.ProcIndexBuffer[i + 2] = A;
 			OutSection.ProcIndexBuffer[i + 1] = B;
-			OutSection.ProcIndexBuffer[i + 2] = C;
+			OutSection.ProcIndexBuffer[i] = C;
 
 			i += 3;
 		}
@@ -234,7 +230,7 @@ float FVoxelPolygonizerForCollisions::GetValue(int X, int Y, int Z)
 	if (Value == -1)
 	{
 		FVoxelMaterial Dummy;
-		Data->GetValueAndMaterial(X, Y, Z, Value, Dummy);
+		Data->GetValueAndMaterial(ChunkPosition.X + X, ChunkPosition.Y + Y, ChunkPosition.Z + Z, Value, Dummy);
 	}
 	return Value;
 }
