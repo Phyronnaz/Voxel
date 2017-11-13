@@ -20,10 +20,10 @@ void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (Cast<APawn>(GetOwner())->IsLocallyControlled())
+	/*if (Cast<APawn>(GetOwner())->IsLocallyControlled())
 	{
 		DrawDebugPoint(GetWorld(), GetOwner()->GetActorLocation(), 100, FColor::Red, false, DeltaTime * 1.1f, 0);
-	}
+	}*/
 
 	if (bNeedUpdate)
 	{
