@@ -11,9 +11,19 @@ UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOf
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
+bool UVoxelInvokerComponent::IsForPhysicsOnly()
+{
+	return !Cast<APawn>(GetOwner())->IsLocallyControlled();
+}
+
 void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (Cast<APawn>(GetOwner())->IsLocallyControlled())
+	{
+		DrawDebugPoint(GetWorld(), GetOwner()->GetActorLocation(), 100, FColor::Red, false, DeltaTime * 1.1f, 0);
+	}
 
 	if (bNeedUpdate)
 	{

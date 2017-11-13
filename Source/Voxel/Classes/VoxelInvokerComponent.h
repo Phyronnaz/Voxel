@@ -14,10 +14,12 @@ class VOXEL_API UVoxelInvokerComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	UVoxelInvokerComponent();
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DistanceOffset;
+
+	UVoxelInvokerComponent();
+
+	bool IsForPhysicsOnly();
 
 protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

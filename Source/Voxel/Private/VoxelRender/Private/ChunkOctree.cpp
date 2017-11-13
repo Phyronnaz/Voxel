@@ -31,7 +31,6 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
-	check(!(bHasChilds && bHasChunk));
 
 	if (Depth == 0)
 	{
@@ -44,14 +43,14 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 	}
 
 	const FVector ChunkWorldPosition = Render->GetGlobalPosition(Position);
-	const float ChunkDiagonal = Render->World->GetVoxelSize() * Size() / 2 * 1.73205080757 /* sqrt(3) */;
+	const float ChunkSide = Render->World->GetVoxelSize() * Size() / 2;
 
 	float MinDistance = MAX_flt;
 	for (auto Invoker : Invokers)
 	{
-		if (Invoker.IsValid())
+		if (Invoker.IsValid() && !Invoker->IsForPhysicsOnly())
 		{
-			const float Distance = FMath::Max(0.f, (ChunkWorldPosition - Invoker->GetOwner()->GetActorLocation()).GetAbsMax() - Invoker->DistanceOffset - ChunkDiagonal);
+			const float Distance = FMath::Max(0.f, (ChunkWorldPosition - Invoker->GetOwner()->GetActorLocation()).GetAbsMax() - Invoker->DistanceOffset - ChunkSide);
 			if (Distance < MinDistance)
 			{
 				MinDistance = Distance;
@@ -122,23 +121,20 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 			Load();
 		}
 	}
-	check(bHasChilds ^ bHasChunk);
 }
 
 TWeakPtr<FChunkOctree> FChunkOctree::GetLeaf(FIntVector PointPosition)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
-	check(bHasChilds ^ bHasChunk);
 
-	if (bHasChunk)
+	FChunkOctree* Current = this;
+
+	while (!Current->bHasChunk)
 	{
-		return AsShared();
+		Current = Current->GetChild(PointPosition).Get();
 	}
-	else // bHasChilds
-	{
-		return GetChild(PointPosition)->GetLeaf(PointPosition);
-	}
+	return Current->AsShared();
 }
 
 UVoxelChunkComponent* FChunkOctree::GetVoxelChunk() const
@@ -162,7 +158,6 @@ void FChunkOctree::Load()
 {
 	check(!VoxelChunk);
 	check(!bHasChunk);
-	check(!bHasChilds);
 
 	VoxelChunk = Render->GetInactiveChunk();
 	VoxelChunk->Init(AsShared());
@@ -174,7 +169,6 @@ void FChunkOctree::Unload()
 {
 	check(VoxelChunk);
 	check(bHasChunk);
-	check(!bHasChilds);
 
 	VoxelChunk->Unload();
 
@@ -185,7 +179,6 @@ void FChunkOctree::Unload()
 void FChunkOctree::CreateChilds()
 {
 	check(!bHasChilds);
-	check(!bHasChunk);
 	check(Depth != 0);
 
 	int d = Size() / 4;
@@ -205,7 +198,6 @@ void FChunkOctree::CreateChilds()
 
 void FChunkOctree::DeleteChilds()
 {
-	check(!bHasChunk);
 	check(bHasChilds);
 	check(Childs.Num() == 8);
 
