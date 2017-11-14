@@ -13,6 +13,7 @@ UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOf
 
 bool UVoxelInvokerComponent::IsForPhysicsOnly()
 {
+	// TODO: Check for when in editor + no pawn
 	return !Cast<APawn>(GetOwner())->IsLocallyControlled();
 }
 

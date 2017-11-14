@@ -54,7 +54,13 @@ public:
 
 		if (Delta.X > ChunkSize / 2)
 		{
-			auto tmp = Components[0];
+			UProceduralMeshComponent* tmp[2][2];
+
+			tmp[0][0] = Components[0][0][0];
+			tmp[0][1] = Components[0][0][1];
+			tmp[1][0] = Components[0][1][0];
+			tmp[1][1] = Components[0][1][1];
+
 			Components[0][0][0] = Components[1][0][0];
 			Components[0][0][1] = Components[1][0][1];
 			Components[0][1][0] = Components[1][1][0];
@@ -65,7 +71,7 @@ public:
 			Components[1][1][0] = tmp[1][0];
 			Components[1][1][1] = tmp[1][1];
 
-			CurrentCenter = NewPosition;
+			CurrentCenter += FIntVector(ChunkSize, 0, 0);
 
 			Update(true, false, false);
 			Update(true, true, false);
@@ -74,7 +80,13 @@ public:
 		}
 		else if (-Delta.X > ChunkSize / 2)
 		{
-			auto tmp = Components[1];
+			UProceduralMeshComponent* tmp[2][2];
+
+			tmp[0][0] = Components[1][0][0];
+			tmp[0][1] = Components[1][0][1];
+			tmp[1][0] = Components[1][1][0];
+			tmp[1][1] = Components[1][1][1];
+
 			Components[1][0][0] = Components[0][0][0];
 			Components[1][0][1] = Components[0][0][1];
 			Components[1][1][0] = Components[0][1][0];
@@ -85,14 +97,117 @@ public:
 			Components[0][1][0] = tmp[1][0];
 			Components[0][1][1] = tmp[1][1];
 
-			CurrentCenter = NewPosition;
+			CurrentCenter -= FIntVector(ChunkSize, 0, 0);
 
 			Update(false, false, false);
 			Update(false, true, false);
 			Update(false, false, true);
 			Update(false, true, true);
 		}
+		if (Delta.Y > ChunkSize / 2)
+		{
+			UProceduralMeshComponent* tmp[2][2];
 
+			tmp[0][0] = Components[0][0][0];
+			tmp[0][1] = Components[0][0][1];
+			tmp[1][0] = Components[1][0][0];
+			tmp[1][1] = Components[1][0][1];
+
+			Components[0][0][0] = Components[0][1][0];
+			Components[0][0][1] = Components[0][1][1];
+			Components[1][0][0] = Components[1][1][0];
+			Components[1][0][1] = Components[1][1][1];
+
+			Components[0][1][0] = tmp[0][0];
+			Components[0][1][1] = tmp[0][1];
+			Components[1][1][0] = tmp[1][0];
+			Components[1][1][1] = tmp[1][1];
+
+			CurrentCenter += FIntVector(0, ChunkSize, 0);
+
+			Update(false, true, false);
+			Update(true, true, false);
+			Update(false, true, true);
+			Update(true, true, true);
+		}
+		else if (-Delta.Y > ChunkSize / 2)
+		{
+			UProceduralMeshComponent* tmp[2][2];
+
+			tmp[0][0] = Components[0][1][0];
+			tmp[0][1] = Components[0][1][1];
+			tmp[1][0] = Components[1][1][0];
+			tmp[1][1] = Components[1][1][1];
+
+			Components[0][1][0] = Components[0][0][0];
+			Components[0][1][1] = Components[0][0][1];
+			Components[1][1][0] = Components[1][0][0];
+			Components[1][1][1] = Components[1][0][1];
+
+			Components[0][0][0] = tmp[0][0];
+			Components[0][0][1] = tmp[0][1];
+			Components[1][0][0] = tmp[1][0];
+			Components[1][0][1] = tmp[1][1];
+
+			CurrentCenter -= FIntVector(0, ChunkSize, 0);
+
+			Update(false, false, false);
+			Update(true, false, false);
+			Update(false, false, true);
+			Update(true, false, true);
+		}
+		if (Delta.Z > ChunkSize / 2)
+		{
+			UProceduralMeshComponent* tmp[2][2];
+
+			tmp[0][0] = Components[0][0][0];
+			tmp[0][1] = Components[0][1][0];
+			tmp[1][0] = Components[1][0][0];
+			tmp[1][1] = Components[1][1][0];
+
+			Components[0][0][0] = Components[0][0][1];
+			Components[0][1][0] = Components[0][1][1];
+			Components[1][0][0] = Components[1][0][1];
+			Components[1][1][0] = Components[1][1][1];
+
+			Components[0][0][1] = tmp[0][0];
+			Components[0][1][1] = tmp[0][1];
+			Components[1][0][1] = tmp[1][0];
+			Components[1][1][1] = tmp[1][1];
+
+			CurrentCenter += FIntVector(0, 0, ChunkSize);
+
+			Update(false, false, true);
+			Update(true, false, true);
+			Update(false, true, true);
+			Update(true, true, true);
+		}
+		else if (-Delta.Z > ChunkSize / 2)
+		{
+			UProceduralMeshComponent* tmp[2][2];
+
+			tmp[0][0] = Components[0][0][1];
+			tmp[0][1] = Components[0][1][1];
+			tmp[1][0] = Components[1][0][1];
+			tmp[1][1] = Components[1][1][1];
+
+			Components[0][0][1] = Components[0][0][0];
+			Components[0][1][1] = Components[0][1][0];
+			Components[1][0][1] = Components[1][0][0];
+			Components[1][1][1] = Components[1][1][0];
+
+			Components[0][0][0] = tmp[0][0];
+			Components[0][1][0] = tmp[0][1];
+			Components[1][0][0] = tmp[1][0];
+			Components[1][1][0] = tmp[1][1];
+
+			CurrentCenter -= FIntVector(0, 0, ChunkSize);
+
+			Update(false, false, false);
+			Update(true, false, false);
+			Update(false, true, false);
+			Update(true, true, false);
+		}
 	}
 
 	void Update(bool bXMax, bool bYMax, bool bZMax)
@@ -104,7 +219,26 @@ public:
 		Poly.CreateSection(Section);
 
 		Components[bXMax][bYMax][bZMax]->SetProcMeshSection(0, Section);
-		Components[bXMax][bYMax][bZMax]->SetWorldLocation(World->LocalToGlobal(ChunkPosition), false, nullptr, ETeleportType::TeleportPhysics);
+		Components[bXMax][bYMax][bZMax]->SetWorldLocation(World->LocalToGlobal(ChunkPosition), false, nullptr, ETeleportType::None);
+	}
+
+	bool IsValid()
+	{
+		return Invoker.IsValid();
+	};
+
+	void Destroy()
+	{
+		for (int i = 0; i < 2; i++)
+		{
+			for (int j = 0; j < 2; j++)
+			{
+				for (int k = 0; k < 2; k++)
+				{
+					Components[i][j][k]->DestroyComponent();
+				}
+			}
+		}
 	}
 
 private:
@@ -336,10 +470,21 @@ void FVoxelRender::UpdateLOD()
 	}
 	VoxelInvokerComponents = Temp;
 
-	for (auto Handler : CollisionComponents)
+	for (auto& Handler : CollisionComponents)
 	{
-		Handler->UpdateComponentsForNewCenter();
+		if (Handler->IsValid())
+		{
+			Handler->UpdateComponentsForNewCenter();
+		}
+		else
+		{
+			Handler->Destroy();
+			delete Handler;
+			Handler = nullptr;
+		}
 	}
+
+	CollisionComponents.RemoveAll([](void* P) { return P == nullptr; });
 
 	MainOctree->UpdateLOD(VoxelInvokerComponents);
 }
