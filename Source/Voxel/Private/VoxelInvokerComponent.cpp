@@ -13,7 +13,7 @@ UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOf
 
 bool UVoxelInvokerComponent::IsForPhysicsOnly()
 {
-	return !Cast<APawn>(GetOwner())->IsLocallyControlled();
+	return !GetWorld()->IsEditorWorld() && Cast<APawn>(GetOwner()) && !Cast<APawn>(GetOwner())->IsLocallyControlled();
 }
 
 void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
