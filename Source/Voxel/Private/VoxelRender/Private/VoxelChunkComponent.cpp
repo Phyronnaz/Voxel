@@ -353,8 +353,7 @@ void UVoxelChunkComponent::ApplyNewFoliage()
 
 			if (!HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData.IsValid())
 			{
-				// TODO: call is invalid, one arg missing
-				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(&Task.InstanceBuffer);
+				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(true, &Task.InstanceBuffer);
 			}
 			else
 			{
