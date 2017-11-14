@@ -45,12 +45,12 @@ float UPerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 			Density -= A * Noise.GetSimplexFractal(x, y, z);
 		}
 
-		const float B = FMath::Lerp(0.f, 5.f, FMath::Clamp((5.f - Z) / 4.f, 0.f, 1.f));
+		const float B = FMath::Lerp(0.f, 100.f, FMath::Clamp((100.f - Z) / 100.f, 0.f, 1.f));
 		{
 			float x = X;
 			float y = Y;
 			float z = Z;
-			Density += B * FMath::Clamp(Noise.GetSimplex(x, y), 0.f, 1.f);
+			Density += B * FMath::Clamp(Noise.GetSimplexFractal(x, y, z), -1.f, 1.f);
 		}
 
 		return FMath::Clamp(Density, -2.f, 2.f) / 2.f;

@@ -11,6 +11,108 @@
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
 
+class FCollisionMeshHandler
+{
+public:
+	TWeakObjectPtr<UVoxelInvokerComponent> Invoker;
+	AVoxelWorld* const World;
+
+	FCollisionMeshHandler(TWeakObjectPtr<UVoxelInvokerComponent> Invoker, AVoxelWorld* const World)
+		: Invoker(Invoker)
+		, World(World)
+	{
+		check(Invoker.IsValid());
+		CurrentCenter = World->GlobalToLocal(Invoker.Get()->GetOwner()->GetActorLocation());
+
+		for (int i = 0; i < 2; i++)
+		{
+			for (int j = 0; j < 2; j++)
+			{
+				for (int k = 0; k < 2; k++)
+				{
+					UProceduralMeshComponent* Chunk = NewObject<UProceduralMeshComponent>(World, NAME_None, RF_Transient | RF_NonPIEDuplicateTransient);
+					Chunk->SetupAttachment(World->GetRootComponent(), NAME_None);
+					Chunk->RegisterComponent();
+					Chunk->SetWorldScale3D(FVector::OneVector * World->GetVoxelSize());
+					Chunk->SetWorldLocation(World->LocalToGlobal(CurrentCenter + FIntVector(i - 1, j - 1, k - 1) * ChunkSize));
+					Components[i][j][k] = Chunk;
+					Update(i, j, k);
+				}
+			}
+		}
+	}
+
+	void UpdateComponentsForNewCenter()
+	{
+		if (!Invoker.IsValid())
+		{
+			UE_LOG(VoxelLog, Error, TEXT("Invalid invoker"));
+			return;
+		}
+		const FIntVector NewPosition = World->GlobalToLocal(Invoker.Get()->GetOwner()->GetActorLocation());
+		const FIntVector Delta = NewPosition - CurrentCenter;
+
+		if (Delta.X > ChunkSize / 2)
+		{
+			auto tmp = Components[0];
+			Components[0][0][0] = Components[1][0][0];
+			Components[0][0][1] = Components[1][0][1];
+			Components[0][1][0] = Components[1][1][0];
+			Components[0][1][1] = Components[1][1][1];
+
+			Components[1][0][0] = tmp[0][0];
+			Components[1][0][1] = tmp[0][1];
+			Components[1][1][0] = tmp[1][0];
+			Components[1][1][1] = tmp[1][1];
+
+			CurrentCenter = NewPosition;
+
+			Update(true, false, false);
+			Update(true, true, false);
+			Update(true, false, true);
+			Update(true, true, true);
+		}
+		else if (-Delta.X > ChunkSize / 2)
+		{
+			auto tmp = Components[1];
+			Components[1][0][0] = Components[0][0][0];
+			Components[1][0][1] = Components[0][0][1];
+			Components[1][1][0] = Components[0][1][0];
+			Components[1][1][1] = Components[0][1][1];
+
+			Components[0][0][0] = tmp[0][0];
+			Components[0][0][1] = tmp[0][1];
+			Components[0][1][0] = tmp[1][0];
+			Components[0][1][1] = tmp[1][1];
+
+			CurrentCenter = NewPosition;
+
+			Update(false, false, false);
+			Update(false, true, false);
+			Update(false, false, true);
+			Update(false, true, true);
+		}
+
+	}
+
+	void Update(bool bXMax, bool bYMax, bool bZMax)
+	{
+		const FIntVector ChunkPosition = CurrentCenter + FIntVector(bXMax - 1, bYMax - 1, bZMax - 1) * ChunkSize;
+
+		FVoxelPolygonizerForCollisions Poly(World->GetData(), ChunkPosition, ChunkSize, ChunkSize, ChunkSize);
+		FProcMeshSection Section;
+		Poly.CreateSection(Section);
+
+		Components[bXMax][bYMax][bZMax]->SetProcMeshSection(0, Section);
+		Components[bXMax][bYMax][bZMax]->SetWorldLocation(World->LocalToGlobal(ChunkPosition), false, nullptr, ETeleportType::TeleportPhysics);
+	}
+
+private:
+	const int ChunkSize = 16;
+	FIntVector CurrentCenter;
+	UProceduralMeshComponent* Components[2][2][2];
+};
+
 FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 HighPriorityMeshThreadCount, uint32 FoliageThreadCount)
 	: World(World)
 	, ChunksParent(ChunksParent)
@@ -20,7 +122,6 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 	, FoliageThreadPool(FQueuedThreadPool::Allocate())
 	, TimeSinceFoliageUpdate(0)
 	, TimeSinceLODUpdate(0)
-	, bCurrentCollisionComponents(false)
 {
 	// Add existing chunks
 	for (auto Component : ChunksParent->GetComponentsByClass(UVoxelChunkComponent::StaticClass()))
@@ -50,6 +151,11 @@ FVoxelRender::~FVoxelRender()
 {
 	check(ActiveChunks.Num() == 0);
 	check(InactiveChunks.empty());
+
+	for (auto Handler : CollisionComponents)
+	{
+		delete Handler;
+	}
 }
 
 void FVoxelRender::Tick(float DeltaTime)
@@ -126,6 +232,7 @@ void FVoxelRender::Tick(float DeltaTime)
 void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 {
 	VoxelInvokerComponents.push_front(Invoker);
+	CollisionComponents.Add(new FCollisionMeshHandler(Invoker, World));
 }
 
 UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()
@@ -229,31 +336,9 @@ void FVoxelRender::UpdateLOD()
 	}
 	VoxelInvokerComponents = Temp;
 
-	bCurrentCollisionComponents = !bCurrentCollisionComponents;
-	auto& CurrentComponents = CollisionComponents[bCurrentCollisionComponents];
-	int i = 0;
-	for (auto Invoker : VoxelInvokerComponents)
+	for (auto Handler : CollisionComponents)
 	{
-		while (CurrentComponents.Num() <= i)
-		{
-			UProceduralMeshComponent* Chunk = NewObject<UProceduralMeshComponent>(ChunksParent, NAME_None, RF_Transient | RF_NonPIEDuplicateTransient);
-			Chunk->SetupAttachment(ChunksParent->GetRootComponent(), NAME_None);
-			Chunk->RegisterComponent();
-			Chunk->SetWorldScale3D(FVector::OneVector * World->GetVoxelSize());
-			CurrentComponents.Add(Chunk);
-		}
-
-		FIntVector Size(16, 16, 16);
-		FIntVector ChunkPosition = World->GlobalToLocal(Invoker->GetOwner()->GetActorLocation()) - Size / 2;
-
-		FVoxelPolygonizerForCollisions Poly(Data, ChunkPosition, Size.X, Size.Y, Size.Z);
-		FProcMeshSection Section;
-		Poly.CreateSection(Section);
-
-		CurrentComponents[i]->SetProcMeshSection(0, Section);
-		CurrentComponents[i]->SetWorldLocation(GetGlobalPosition(ChunkPosition));
-
-		i++;
+		Handler->UpdateComponentsForNewCenter();
 	}
 
 	MainOctree->UpdateLOD(VoxelInvokerComponents);
