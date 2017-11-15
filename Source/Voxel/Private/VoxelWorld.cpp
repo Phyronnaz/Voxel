@@ -1,7 +1,8 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
+#include "VoxelWorld.h"
 #include "VoxelData.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelRender.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine.h"

@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelData.h"
+#include "VoxelPrivatePCH.h"
 #include "ValueOctree.h"
 #include "VoxelSave.h"
 #include "GenericPlatformProcess.h"

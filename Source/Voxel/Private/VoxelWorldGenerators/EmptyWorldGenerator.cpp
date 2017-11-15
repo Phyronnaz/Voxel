@@ -1,5 +1,5 @@
-#include "VoxelPrivatePCH.h"
 #include "EmptyWorldGenerator.h"
+#include "VoxelPrivatePCH.h"
 
 float UEmptyWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {

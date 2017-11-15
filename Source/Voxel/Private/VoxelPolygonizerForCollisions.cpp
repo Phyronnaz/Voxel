@@ -1,5 +1,5 @@
-#include "VoxelPrivatePCH.h"
 #include "VoxelPolygonizerForCollisions.h"
+#include "VoxelPrivatePCH.h"
 #include "Transvoxel.h"
 #include "VoxelData.h"
 #include "VoxelData/Private/ValueOctree.h"

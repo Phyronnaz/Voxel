@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelWorldGenerator.h"
+#include "VoxelPrivatePCH.h"
 
 float UVoxelWorldGenerator::GetDefaultValue(int X, int Y, int Z)
 {

@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelChunkComponent.h"
+#include "VoxelPrivatePCH.h"
 #include "ProceduralMeshComponent.h"
 #include "Misc/IQueuedWork.h"
 #include "AI/Navigation/NavigationSystem.h"

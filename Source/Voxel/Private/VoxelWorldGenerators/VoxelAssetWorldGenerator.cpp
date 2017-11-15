@@ -1,6 +1,8 @@
-#include "VoxelPrivatePCH.h"
-#include "FlatWorldGenerator.h"
+// Copyright 2017 Phyronnaz
+
 #include "VoxelAssetWorldGenerator.h"
+#include "FlatWorldGenerator.h"
+#include "VoxelPrivatePCH.h"
 
 UVoxelAssetWorldGenerator::UVoxelAssetWorldGenerator()
 	: InstancedWorldGenerator(nullptr)

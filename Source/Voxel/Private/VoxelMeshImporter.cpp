@@ -1,8 +1,8 @@
 // Copyright 2017 Phyronnaz
 
 #pragma once
-#include "VoxelPrivatePCH.h"
 #include "VoxelMeshImporter.h"
+#include "VoxelPrivatePCH.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "DrawDebugHelpers.h"

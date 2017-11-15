@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelMaterial.h"
 
 UFlatWorldGenerator::UFlatWorldGenerator()

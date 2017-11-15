@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "SphereWorldGenerator.h"
+#include "VoxelPrivatePCH.h"
 
 USphereWorldGenerator::USphereWorldGenerator() : Radius(1000), InverseOutsideInside(false), ValueMultiplier(1)
 {

@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelRender.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelChunkComponent.h"
 #include "ChunkOctree.h"
 

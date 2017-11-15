@@ -1,5 +1,4 @@
-#include "VoxelPrivatePCH.h"
-#pragma warning( disable : 4701 )
+#pragma warning( disable : 4701 4244 )
 
 // FastNoise.cpp
 //
@@ -2263,4 +2262,4 @@ void FastNoise::SingleGradientPerturb(unsigned char offset, FN_DECIMAL warpAmp, 
 	y += Lerp(ly0x, ly1x, ys) * warpAmp;
 }
 
-#pragma warning( default : 4701 )
+#pragma warning( default : 4701 4244 )

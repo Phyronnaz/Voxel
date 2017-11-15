@@ -1,5 +1,5 @@
-#include "VoxelPrivatePCH.h"
 #include "ValueOctree.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelData.h"
 #include "VoxelWorldGenerator.h"
 #include "GenericPlatformProcess.h"

@@ -1,9 +1,8 @@
 // Copyright 2017 Phyronnaz
 
-#pragma once
-#include "VoxelPrivatePCH.h"
-#include "LandscapeComponent.h"
 #include "VoxelLandscapeAsset.h"
+#include "LandscapeComponent.h"
+#include "VoxelPrivatePCH.h"
 #include "Engine/World.h"
 #include "BufferArchive.h"
 #include "ArchiveSaveCompressedProxy.h"

@@ -1,10 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#pragma once
-
-#include "VoxelPrivatePCH.h"
-#include "CoreMinimal.h"
 #include "PerlinNoiseWorldGenerator.h"
+#include "VoxelPrivatePCH.h"
 
 UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
 {
