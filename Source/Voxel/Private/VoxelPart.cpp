@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelPart.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelProceduralMeshComponent.h"
 #include "VoxelData.h"
 #include "VoxelPolygonizer.h"

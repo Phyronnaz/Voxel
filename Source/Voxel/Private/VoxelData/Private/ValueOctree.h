@@ -42,7 +42,7 @@ public:
 	 * @return	Value
 	 * @return	Color
 	 */
-	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
+	void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const;
 
 	void SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelMaterial Material, bool bSetValue, bool bSetMaterial);
 
@@ -75,7 +75,7 @@ public:
 	* Get direct child that owns GlobalPosition
 	* @param	GlobalPosition	Position in voxel space
 	*/
-	FORCEINLINE FValueOctree* GetChild(int X, int Y, int Z);
+	FORCEINLINE FValueOctree* GetChild(int X, int Y, int Z) const;
 
 	FORCEINLINE FValueOctree* GetLeaf(int X, int Y, int Z);
 
@@ -107,7 +107,7 @@ private:
 	// For multiplayer
 
 	TSet<int> DirtyValues;
-	TSet<int> DirtyColors;
+	TSet<int> DirtyMaterials;
 
 	bool bIsNetworkDirty;
 
@@ -121,7 +121,7 @@ private:
 	 */
 	void SetAsDirty();
 
-	FORCEINLINE int IndexFromCoordinates(int X, int Y, int Z);
+	FORCEINLINE int IndexFromCoordinates(int X, int Y, int Z) const;
 
-	FORCEINLINE void CoordinatesFromIndex(int Index, int& OutX, int& OutY, int& OutZ);
+	FORCEINLINE void CoordinatesFromIndex(int Index, int& OutX, int& OutY, int& OutZ) const;
 };

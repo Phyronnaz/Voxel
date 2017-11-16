@@ -25,15 +25,15 @@ public:
 		TSubclassOf<UVoxelWorldGenerator> DefaultWorldGenerator;
 
 
-	UVoxelAssetWorldGenerator();
-	~UVoxelAssetWorldGenerator();
+	//UVoxelAssetWorldGenerator();
+	//~UVoxelAssetWorldGenerator();
 
 
-	virtual float GetDefaultValue(int X, int Y, int Z) override;
+	//virtual float GetDefaultValue(int X, int Y, int Z) override;
 
-	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
+	//virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
 
-	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
+	//virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 private:
 	UPROPERTY()
@@ -42,5 +42,5 @@ private:
 	FDecompressedVoxelAsset* DecompressedAsset;
 	FVoxelBox Bounds;
 
-	void CreateGeneratorAndDecompressedAsset(const float VoxelSize);
+	//void CreateGeneratorAndDecompressedAsset(const float VoxelSize);
 };

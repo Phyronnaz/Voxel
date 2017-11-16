@@ -1,5 +1,5 @@
-#include "VoxelPrivatePCH.h"
 #include "VoxelPolygonizer.h"
+#include "VoxelPrivatePCH.h"
 #include "Transvoxel.h"
 #include "VoxelData.h"
 #include "VoxelData/Private/ValueOctree.h"
@@ -32,6 +32,9 @@ FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector Chu
 
 void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 {
+	OutSection.Reset();
+	return; // TODO
+
 	for (int i = 0; i < 17; i++)
 	{
 		for (int j = 0; j < 17; j++)
@@ -73,6 +76,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 								FVoxelMaterial CurrentMaterial;
 								Data->GetValueAndMaterial(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentMaterial, LastOctree);
 
+								// TODO: not true, all values should be cached
 								if (X + 1 < 18 && Y + 1 < 18 && Z + 1 < 18) // Getting value out of this chunk for the "continue" optimization after
 								{
 									CachedValues[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentValue;
@@ -400,7 +404,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		{
 			FVector Vertex = Vertices.front();
 			FColor Color = Colors.front();
-			Vertices.pop_front();
+			Vertices.pop_front(); // TODO: don't pop!
 			Colors.pop_front();
 
 			if ((Vertex.X < -KINDA_SMALL_NUMBER) || (Vertex.X > Size() + KINDA_SMALL_NUMBER) ||

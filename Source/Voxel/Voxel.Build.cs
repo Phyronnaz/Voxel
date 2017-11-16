@@ -9,6 +9,10 @@ namespace UnrealBuildTool.Rules
     {
         public Voxel(ReadOnlyTargetRules Target) : base(Target)
         {
+            PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+            bUseAVX = true;
+            bEnforceIWYU = false;
+
             // Hack to include engine private folder
             // Get the engine path. Ends with "Engine/"
             string engine_path = Path.GetFullPath(BuildConfiguration.RelativeEnginePath);

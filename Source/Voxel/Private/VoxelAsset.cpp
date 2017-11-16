@@ -1,8 +1,8 @@
 // Copyright 2017 Phyronnaz
 
 #pragma once
-#include "VoxelPrivatePCH.h"
 #include "VoxelAsset.h"
+#include "VoxelPrivatePCH.h"
 
 #include "ArchiveSaveCompressedProxy.h"
 #include "ArchiveLoadCompressedProxy.h"

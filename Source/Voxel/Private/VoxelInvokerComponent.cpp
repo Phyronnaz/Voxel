@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelInvokerComponent.h"
+#include "VoxelPrivatePCH.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine.h"
 

@@ -14,6 +14,16 @@
 #include "IDetailPropertyRow.h"
 #include "Engine.h"
 
+
+
+#include "Containers/Array.h"
+#include "ISettingsModule.h"
+#include "ISettingsSection.h"
+#include "Modules/ModuleInterface.h"
+#include "Modules/ModuleManager.h"
+#include "Templates/SharedPointer.h"
+#include "Toolkits/AssetEditorToolkit.h"
+
 DEFINE_LOG_CATEGORY(VoxelEditorLog)
 
 FVoxelWorldDetails::FVoxelWorldDetails()
@@ -80,14 +90,18 @@ FReply FVoxelWorldDetails::OnWorldPreviewToggle()
 	{
 		World->VoxelWorldEditorClass = AVoxelWorldEditor::StaticClass();
 
-		if (World->IsCreated())
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+		TArray<FAssetData> AssetDataArray;
+		AssetRegistryModule.Get().GetAssetsByClass(UVoxelDataAsset::StaticClass()->GetFName(), AssetDataArray);
+
+		/*if (World->IsCreated())
 		{
 			World->DestroyInEditor();
 		}
 		else
 		{
 			World->CreateInEditor();
-		}
+		}*/
 	}
 
 	return FReply::Handled();

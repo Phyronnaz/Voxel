@@ -1,4 +1,3 @@
-#include "VoxelPrivatePCH.h"
 #pragma warning( disable : 4701 )
 
 // FastNoise.cpp

@@ -1,7 +1,7 @@
 // Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
 
-#include "VoxelPrivatePCH.h"
 #include "CoreMinimal.h"
+#include "VoxelPrivatePCH.h"
 #include "Modules/ModuleManager.h"
 #include "IVoxel.h"
 

@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelData.h"
+#include "VoxelPrivatePCH.h"
 #include "ValueOctree.h"
 #include "VoxelSave.h"
 #include "GenericPlatformProcess.h"
@@ -66,25 +66,26 @@ void FVoxelData::Reset()
 	delete MainOctree;
 	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth), bMultiplayer);
 }
-
-void FVoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial) const
+void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
-	ClampToWorld(X, Y, Z);
-
-	MainOctree->GetLeaf(X, Y, Z)->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial);
+	check(IsInWorld(Start.X, Start.Y, Start.Z));
+	check(IsInWorld(Start.X + Size.X, Start.Y + Size.Y, Start.Z + Size.Z));
+	MainOctree->GetValuesAndMaterials(Values, Materials, Start, StartIndex, Step, Size, ArraySize);
 }
 
-void FVoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, FValueOctree*& LastOctree) const
+float FVoxelData::GetValue(int X, int Y, int Z)
 {
-	ClampToWorld(X, Y, Z);
-
-	if (UNLIKELY(!LastOctree || !LastOctree->IsLeaf() || !LastOctree->IsInOctree(X, Y, Z)))
-	{
-		LastOctree = MainOctree->GetLeaf(X, Y, Z);
-	}
-	LastOctree->GetValueAndMaterial(X, Y, Z, OutValue, OutMaterial);
+	float Values[1];
+	GetValuesAndMaterials(Values, nullptr, FIntVector(X, Y, Z), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
+	return Values[0];
 }
 
+FVoxelMaterial FVoxelData::GetMaterial(int X, int Y, int Z)
+{
+	FVoxelMaterial Materials[1];
+	GetValuesAndMaterials(nullptr, Materials, FIntVector(X, Y, Z), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
+	return Materials[0];
+}
 void FVoxelData::SetValue(int X, int Y, int Z, float Value)
 {
 	check(IsInWorld(X, Y, Z));

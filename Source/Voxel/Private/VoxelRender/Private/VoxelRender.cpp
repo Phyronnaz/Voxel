@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelRender.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelChunkComponent.h"
 #include "ChunkOctree.h"
 #include "ProceduralMeshComponent.h"
@@ -31,10 +31,11 @@ public:
 				for (int k = 0; k < 2; k++)
 				{
 					UProceduralMeshComponent* Chunk = NewObject<UProceduralMeshComponent>(World, NAME_None, RF_Transient | RF_NonPIEDuplicateTransient);
+					Chunk->bUseAsyncCooking = true;
 					Chunk->SetupAttachment(World->GetRootComponent(), NAME_None);
 					Chunk->RegisterComponent();
 					Chunk->SetWorldScale3D(FVector::OneVector * World->GetVoxelSize());
-					Chunk->SetWorldLocation(World->LocalToGlobal(CurrentCenter + FIntVector(i - 1, j - 1, k - 1) * ChunkSize));
+					Chunk->SetWorldLocation(World->LocalToGlobal(CurrentCenter + FIntVector(i - 1, j - 1, k - 1) * CHUNKSIZE_FC));
 					Components[i][j][k] = Chunk;
 					Update(i, j, k);
 				}
@@ -44,6 +45,8 @@ public:
 
 	void UpdateComponentsForNewCenter()
 	{
+		// TODO
+		return;
 		if (!Invoker.IsValid())
 		{
 			UE_LOG(VoxelLog, Error, TEXT("Invalid invoker"));
@@ -52,7 +55,7 @@ public:
 		const FIntVector NewPosition = World->GlobalToLocal(Invoker.Get()->GetOwner()->GetActorLocation());
 		const FIntVector Delta = NewPosition - CurrentCenter;
 
-		if (Delta.X > ChunkSize / 2)
+		if (Delta.X > CHUNKSIZE_FC / 2)
 		{
 			UProceduralMeshComponent* tmp[2][2];
 
@@ -71,14 +74,14 @@ public:
 			Components[1][1][0] = tmp[1][0];
 			Components[1][1][1] = tmp[1][1];
 
-			CurrentCenter += FIntVector(ChunkSize, 0, 0);
+			CurrentCenter += FIntVector(CHUNKSIZE_FC, 0, 0);
 
 			Update(true, false, false);
 			Update(true, true, false);
 			Update(true, false, true);
 			Update(true, true, true);
 		}
-		else if (-Delta.X > ChunkSize / 2)
+		else if (-Delta.X > CHUNKSIZE_FC / 2)
 		{
 			UProceduralMeshComponent* tmp[2][2];
 
@@ -97,14 +100,14 @@ public:
 			Components[0][1][0] = tmp[1][0];
 			Components[0][1][1] = tmp[1][1];
 
-			CurrentCenter -= FIntVector(ChunkSize, 0, 0);
+			CurrentCenter -= FIntVector(CHUNKSIZE_FC, 0, 0);
 
 			Update(false, false, false);
 			Update(false, true, false);
 			Update(false, false, true);
 			Update(false, true, true);
 		}
-		if (Delta.Y > ChunkSize / 2)
+		if (Delta.Y > CHUNKSIZE_FC / 2)
 		{
 			UProceduralMeshComponent* tmp[2][2];
 
@@ -123,14 +126,14 @@ public:
 			Components[1][1][0] = tmp[1][0];
 			Components[1][1][1] = tmp[1][1];
 
-			CurrentCenter += FIntVector(0, ChunkSize, 0);
+			CurrentCenter += FIntVector(0, CHUNKSIZE_FC, 0);
 
 			Update(false, true, false);
 			Update(true, true, false);
 			Update(false, true, true);
 			Update(true, true, true);
 		}
-		else if (-Delta.Y > ChunkSize / 2)
+		else if (-Delta.Y > CHUNKSIZE_FC / 2)
 		{
 			UProceduralMeshComponent* tmp[2][2];
 
@@ -149,14 +152,14 @@ public:
 			Components[1][0][0] = tmp[1][0];
 			Components[1][0][1] = tmp[1][1];
 
-			CurrentCenter -= FIntVector(0, ChunkSize, 0);
+			CurrentCenter -= FIntVector(0, CHUNKSIZE_FC, 0);
 
 			Update(false, false, false);
 			Update(true, false, false);
 			Update(false, false, true);
 			Update(true, false, true);
 		}
-		if (Delta.Z > ChunkSize / 2)
+		if (Delta.Z > CHUNKSIZE_FC / 2)
 		{
 			UProceduralMeshComponent* tmp[2][2];
 
@@ -175,14 +178,14 @@ public:
 			Components[1][0][1] = tmp[1][0];
 			Components[1][1][1] = tmp[1][1];
 
-			CurrentCenter += FIntVector(0, 0, ChunkSize);
+			CurrentCenter += FIntVector(0, 0, CHUNKSIZE_FC);
 
 			Update(false, false, true);
 			Update(true, false, true);
 			Update(false, true, true);
 			Update(true, true, true);
 		}
-		else if (-Delta.Z > ChunkSize / 2)
+		else if (-Delta.Z > CHUNKSIZE_FC / 2)
 		{
 			UProceduralMeshComponent* tmp[2][2];
 
@@ -201,7 +204,7 @@ public:
 			Components[1][0][0] = tmp[1][0];
 			Components[1][1][0] = tmp[1][1];
 
-			CurrentCenter -= FIntVector(0, 0, ChunkSize);
+			CurrentCenter -= FIntVector(0, 0, CHUNKSIZE_FC);
 
 			Update(false, false, false);
 			Update(true, false, false);
@@ -212,9 +215,9 @@ public:
 
 	void Update(bool bXMax, bool bYMax, bool bZMax)
 	{
-		const FIntVector ChunkPosition = CurrentCenter + FIntVector(bXMax - 1, bYMax - 1, bZMax - 1) * ChunkSize;
+		const FIntVector ChunkPosition = CurrentCenter + FIntVector(bXMax - 1, bYMax - 1, bZMax - 1) * CHUNKSIZE_FC;
 
-		FVoxelPolygonizerForCollisions Poly(World->GetData(), ChunkPosition, ChunkSize, ChunkSize, ChunkSize);
+		FVoxelPolygonizerForCollisions Poly(World->GetData(), ChunkPosition);
 		FProcMeshSection Section;
 		Poly.CreateSection(Section);
 
@@ -241,8 +244,26 @@ public:
 		}
 	}
 
+	void UpdateInBox(FVoxelBox Box)
+	{
+		for (int i = 0; i < 2; i++)
+		{
+			for (int j = 0; j < 2; j++)
+			{
+				for (int k = 0; k < 2; k++)
+				{
+					FIntVector P(i - 1, j - 1, k - 1);
+					FVoxelBox CurrentBox(P * CHUNKSIZE_FC + CurrentCenter, (P + FIntVector(1, 1, 1)) * CHUNKSIZE_FC + CurrentCenter);
+					if (CurrentBox.Intersect(Box))
+					{
+						Update(i, j, k);
+					}
+				}
+			}
+		}
+	}
+
 private:
-	const int ChunkSize = 16;
 	FIntVector CurrentCenter;
 	UProceduralMeshComponent* Components[2][2][2];
 };
@@ -361,6 +382,14 @@ void FVoxelRender::Tick(float DeltaTime)
 		}
 	}
 	ChunksToDelete.remove_if([](FChunkToDelete ChunkToDelete) { return ChunkToDelete.TimeLeft < 0; });
+
+	if (CollisionComponents.Num())
+	{
+		for (int i = 0; i < 20; i++)
+		{
+			CollisionComponents[0]->Update(0, 0, 0);
+		}
+	}
 }
 
 void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
@@ -420,6 +449,22 @@ void FVoxelRender::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
 	{
 		UpdateChunk(Chunk, bAsync);
 	}
+
+	for (auto& Handler : CollisionComponents)
+	{
+		if (Handler->IsValid())
+		{
+			Handler->UpdateInBox(Box);
+		}
+		else
+		{
+			Handler->Destroy();
+			delete Handler;
+			Handler = nullptr;
+		}
+	}
+
+	CollisionComponents.RemoveAll([](void* P) { return P == nullptr; });
 }
 
 void FVoxelRender::ApplyUpdates()

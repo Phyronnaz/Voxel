@@ -19,27 +19,28 @@ class VOXEL_API UVoxelWorldGenerator : public UObject
 	GENERATED_BODY()
 
 public:
-	/**
-	 * Get default value at position
-	 * @param	Position		Position in voxel space
-	 * @return	Value at position: positive if empty, negative if filled
-	 */
-	virtual float GetDefaultValue(int X, int Y, int Z);
 
 	/**
-	 * Get default color at position
-	 * @param	Position		Position in voxel space
-	 * @return	Color at position
+	 * Values or Materials can be null
 	 */
-	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z);
+	virtual void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
+	{
+
+	}
 
 	/**
 	 * If you need a reference to Voxel World
 	 */
-	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld);
+	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld)
+	{
+
+	}
 
 	/**
 	 * World up vector at position
 	 */
-	virtual FVector GetUpVector(int X, int Y, int Z);
+	virtual FVector GetUpVector(int X, int Y, int Z) const
+	{
+		return FVector::UpVector;
+	}
 };

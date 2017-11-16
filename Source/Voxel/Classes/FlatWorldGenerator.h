@@ -32,8 +32,7 @@ class VOXEL_API UFlatWorldGenerator : public UVoxelWorldGenerator
 public:
 	UFlatWorldGenerator();
 
-	virtual float GetDefaultValue(int X, int Y, int Z) override;
-	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
+	virtual void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const override;
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 	// Height of the difference between full and empty

@@ -1,5 +1,5 @@
-#include "VoxelPrivatePCH.h"
 #include "VoxelNetworking.h"
+#include "VoxelPrivatePCH.h"
 
 
 FVoxelTcpConnection::FVoxelTcpConnection(FSocket* const Socket)

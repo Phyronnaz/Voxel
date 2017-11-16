@@ -4,6 +4,8 @@
 #include "ProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 
+#define CHUNKSIZE_FC 18
+
 class FValueOctree;
 class FVoxelData;
 struct FVoxelMaterial;
@@ -11,7 +13,7 @@ struct FVoxelMaterial;
 class FVoxelPolygonizerForCollisions
 {
 public:
-	FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition, const int SizeX, const int SizeY, const int SizeZ);
+	FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition);
 
 	void CreateSection(FProcMeshSection& OutSection);
 
@@ -19,16 +21,15 @@ private:
 	FVoxelData* const Data;
 	FIntVector const ChunkPosition;
 
-	const int SizeX;
-	const int SizeY;
-	const int SizeZ;
-
 	FValueOctree* LastOctree;
 
-	// Cache to get index of already created vertices
-	TArray<int> Cache; // [SizeX][SizeY][SizeZ][3];;
+	// Cache of the sign of the values. Can lead to crash if value changed between cache and 2nd access
+	uint64 CachedSigns[216];
 
-	TArray<float> CachedValues;
+	// Cache to get index of already created vertices
+	int Cache[CHUNKSIZE_FC][CHUNKSIZE_FC][CHUNKSIZE_FC][3]; // [SizeX][SizeY][SizeZ][3];;
+
+	float CachedValues[(CHUNKSIZE_FC + 1) * (CHUNKSIZE_FC + 1) * (CHUNKSIZE_FC + 1)];
 
 	FORCEINLINE float GetValue(int X, int Y, int Z);
 

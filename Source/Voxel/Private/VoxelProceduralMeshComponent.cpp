@@ -1,7 +1,7 @@
 // Copyright 1998-2017 Epic Games, Inc. All Rights Reserved. 
 
-#include "VoxelPrivatePCH.h"
 #include "VoxelProceduralMeshComponent.h"
+#include "VoxelPrivatePCH.h"
 #include "PrimitiveViewRelevance.h"
 #include "RenderResource.h"
 #include "RenderingThread.h"

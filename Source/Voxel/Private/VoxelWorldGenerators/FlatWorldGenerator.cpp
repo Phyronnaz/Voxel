@@ -1,7 +1,7 @@
 // Copyright 2017 Phyronnaz
 
-#include "VoxelPrivatePCH.h"
 #include "FlatWorldGenerator.h"
+#include "VoxelPrivatePCH.h"
 #include "VoxelMaterial.h"
 
 UFlatWorldGenerator::UFlatWorldGenerator()
@@ -12,46 +12,67 @@ UFlatWorldGenerator::UFlatWorldGenerator()
 
 }
 
-float UFlatWorldGenerator::GetDefaultValue(int X, int Y, int Z)
+void UFlatWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
-	return (Z >= TerrainHeight) ? HardnessMultiplier : -HardnessMultiplier;
-}
-
-FVoxelMaterial UFlatWorldGenerator::GetDefaultMaterial(int X, int Y, int Z)
-{
-	if (TerrainLayers.Num())
+	for (int K = 0; K < Size.Z; K++)
 	{
-		if (Z < TerrainLayers[0].Start)
+		const int Z = Start.Z + K * Step;
+		const float Value = (Z >= TerrainHeight) ? HardnessMultiplier : -HardnessMultiplier;
+		FVoxelMaterial Material = FVoxelMaterial();
+		if (Materials && TerrainLayers.Num())
 		{
-			return FVoxelMaterial(TerrainLayers[0].Material, TerrainLayers[0].Material, 255);
-		}
-		const int LastIndex = TerrainLayers.Num() - 1;
-		if (LastIndex >= 0)
-		{
-			if (Z >= TerrainLayers[LastIndex].Start)
+			if (Z < TerrainLayers[0].Start)
 			{
-				return FVoxelMaterial(TerrainLayers[LastIndex].Material, TerrainLayers[LastIndex].Material, (LastIndex % 2 == 0) ? 255 : 0);
+				Material = FVoxelMaterial(TerrainLayers[0].Material, TerrainLayers[0].Material, 255);
 			}
-		}
-		for (int i = 0; i < TerrainLayers.Num() - 1; i++)
-		{
-			if (TerrainLayers[i].Start <= Z && Z < TerrainLayers[i + 1].Start)
+			else
 			{
-				const uint8 Alpha = FMath::Clamp<int>(255 * (TerrainLayers[i + 1].Start - 1 - Z) / FadeHeight, 0, 255);
-
-				// Alternate first material to avoid problem with alpha smoothing
-				if (i % 2 == 0)
+				const int LastIndex = TerrainLayers.Num() - 1;
+				if (LastIndex >= 0 && Z >= TerrainLayers[LastIndex].Start)
 				{
-					return FVoxelMaterial(TerrainLayers[i + 1].Material, TerrainLayers[i].Material, Alpha);
+					Material = FVoxelMaterial(TerrainLayers[LastIndex].Material, TerrainLayers[LastIndex].Material, (LastIndex % 2 == 0) ? 255 : 0);
 				}
 				else
 				{
-					return FVoxelMaterial(TerrainLayers[i].Material, TerrainLayers[i + 1].Material, 255 - Alpha);
+					for (int i = 0; i < TerrainLayers.Num() - 1; i++)
+					{
+						if (TerrainLayers[i].Start <= Z && Z < TerrainLayers[i + 1].Start)
+						{
+							const uint8 Alpha = FMath::Clamp<int>(255 * (TerrainLayers[i + 1].Start - 1 - Z) / FadeHeight, 0, 255);
+
+							// Alternate first material to avoid problem with alpha smoothing
+							if (i % 2 == 0)
+							{
+								Material = FVoxelMaterial(TerrainLayers[i + 1].Material, TerrainLayers[i].Material, Alpha);
+							}
+							else
+							{
+								Material = FVoxelMaterial(TerrainLayers[i].Material, TerrainLayers[i + 1].Material, 255 - Alpha);
+							}
+						}
+					}
+				}
+			}
+		}
+		for (int J = 0; J < Size.Y; J++)
+		{
+			const int Y = Start.Y + J * Step;
+			for (int I = 0; I < Size.X; I++)
+			{
+				const int X = Start.X + I * Step;
+				const int Index = (StartIndex.X + I) + ArraySize.X * (StartIndex.Y + J) + ArraySize.X * ArraySize.Y * (StartIndex.Z + K);
+
+				if (Values)
+				{
+					Values[Index] = Value;
+				}
+				if (Materials)
+				{
+					Materials[Index] = Material;
 				}
 			}
 		}
 	}
-	return FVoxelMaterial();
 }
 
 void UFlatWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
