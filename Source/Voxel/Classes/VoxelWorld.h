@@ -183,7 +183,7 @@ private:
 		UMaterialInterface* VoxelMaterial;
 
 	// Width = 16 * 2^Depth
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", ClampMax = "20", UIMin = "0", UIMax = "20", DisplayName = "Depth"))
+	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "0", ClampMax = "19", UIMin = "0", UIMax = "19", DisplayName = "Depth"))
 		int NewDepth;
 
 	// Size of a voxel in cm

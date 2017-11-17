@@ -3,7 +3,7 @@
 
 FORCEINLINE uint64 IntPow9(int Power)
 {
-	check(Power <= 20);
+	check(Power <= 19);
 	uint64 Pow = 1;
 	for (int i = 0; i < Power; i++)
 	{

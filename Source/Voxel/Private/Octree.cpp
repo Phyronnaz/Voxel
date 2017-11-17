@@ -4,7 +4,7 @@
 FOctree::FOctree(FIntVector Position, uint8 Depth, uint64 Id /*= -1*/) : Position(Position), Depth(Depth), Id(Id), bHasChilds(false)
 {
 	// Max for Id
-	check(Depth <= 20);
+	check(Depth <= 19);
 }
 
 bool FOctree::operator==(const FOctree& Other) const
