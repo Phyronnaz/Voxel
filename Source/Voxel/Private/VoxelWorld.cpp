@@ -356,7 +356,6 @@ bool AVoxelWorld::GetComputeTransitions() const
 
 bool AVoxelWorld::GetComputeCollisions() const
 {
-	return false;
 	return bComputeCollisions;
 }
 

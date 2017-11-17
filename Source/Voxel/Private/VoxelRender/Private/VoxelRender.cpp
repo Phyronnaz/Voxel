@@ -10,6 +10,7 @@
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateCollision"), STAT_UpdateCollision, STATGROUP_Voxel);
 
 class FCollisionMeshHandler
 {
@@ -219,6 +220,8 @@ public:
 
 	void Update(bool bXMax, bool bYMax, bool bZMax)
 	{
+		SCOPE_CYCLE_COUNTER(STAT_UpdateCollision);
+
 		const FIntVector ChunkPosition = CurrentCenter + FIntVector(bXMax - 1, bYMax - 1, bZMax - 1) * CHUNKSIZE_FC;
 
 		FVoxelPolygonizerForCollisions Poly(World->GetData(), ChunkPosition);

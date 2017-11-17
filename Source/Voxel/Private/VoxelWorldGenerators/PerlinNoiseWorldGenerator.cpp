@@ -12,7 +12,11 @@ UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
 
 void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
-	//float* NoiseValues = NoiseSIMD->GetSimplexFractalSet(Start.X, Start.Y, Start.Z, Size.X, Size.Y, Size.Z, Step);
+	check(Start.X % Step == 0);
+	check(Start.Y % Step == 0);
+	check(Start.Z % Step == 0);
+
+	float* NoiseValues = NoiseSIMD->GetSimplexFractalSet(Start.X / Step, Start.Y / Step, Start.Z / Step, Size.X, Size.Y, Size.Z, Step);
 
 	for (int K = 0; K < Size.Z; K++)
 	{
@@ -27,11 +31,11 @@ void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMat
 
 				float Density = Z;
 
-				Density += 10 * Noise.GetSimplexFractal(X, Y);
+				//Density += 10 * Noise.GetSimplexFractal(X, Y);
 
 				//Density = X + 100 * Y+ 100 * 100 * Z;
 
-				//Density -= 10 * NoiseValues[K + Size.Z * J + Size.Z * Size.Y * I];
+				Density -= 10 * NoiseValues[K + Size.Z * J + Size.Z * Size.Y * I];
 
 				const int Index = (StartIndex.X + I) + ArraySize.X * (StartIndex.Y + J) + ArraySize.X * ArraySize.Y * (StartIndex.Z + K);
 				if (Values)
@@ -45,7 +49,7 @@ void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMat
 			}
 		}
 	}
-	//FastNoiseSIMD::FreeNoiseSet(NoiseValues);
+	FastNoiseSIMD::FreeNoiseSet(NoiseValues);
 }
 
 //float UPerlinNoiseWorldGenerator::GetDefaultValue(int X, int Y, int Z)
