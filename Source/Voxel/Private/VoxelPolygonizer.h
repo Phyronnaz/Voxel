@@ -4,6 +4,8 @@
 #include "VoxelProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 
+#define CHUNKSIZE 16
+
 class FValueOctree;
 class FVoxelData;
 struct FVoxelMaterial;
@@ -29,16 +31,15 @@ private:
 	const int RayCount;
 
 
-	FValueOctree* LastOctree;
-
 	// Cache of the sign of the values. Can lead to crash if value changed between cache and 2nd access
 	uint64 CachedSigns[216];
 
-	float CachedValues[18 * 18 * 18];
-	FVoxelMaterial CachedMaterials[18 * 18 * 18];
+	// +3: 2 for normal + one for end edge
+	float CachedValues[(CHUNKSIZE + 3) * (CHUNKSIZE + 3) * (CHUNKSIZE + 3)];
+	FVoxelMaterial CachedMaterials[(CHUNKSIZE + 3) * (CHUNKSIZE + 3) * (CHUNKSIZE + 3)];
 
 	// Cache to get index of already created vertices
-	int Cache[18][18][18][3];
+	int Cache[CHUNKSIZE + 2][CHUNKSIZE + 2][CHUNKSIZE + 2][3];
 
 	int Cache2D[6][17][17][7]; // Edgeindex: 0 -> 8; 1 -> 9; 2 -> Not used; 3-6 -> 3-6
 

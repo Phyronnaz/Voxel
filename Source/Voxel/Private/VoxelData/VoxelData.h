@@ -49,13 +49,11 @@ public:
 	*/
 	FORCEINLINE void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const;
 
-	FORCEINLINE float GetValue(int X, int Y, int Z);
-	FORCEINLINE FVoxelMaterial GetMaterial(int X, int Y, int Z);
+	FORCEINLINE float GetValue(int X, int Y, int Z) const;
+	FORCEINLINE FVoxelMaterial GetMaterial(int X, int Y, int Z) const;
 
-	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
-	{
+	FORCEINLINE void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
 
-	}
 	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, FValueOctree*& LastOctree)
 	{
 

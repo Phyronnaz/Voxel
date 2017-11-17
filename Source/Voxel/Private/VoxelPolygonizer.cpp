@@ -4,6 +4,7 @@
 #include "VoxelData.h"
 #include "VoxelData/Private/ValueOctree.h"
 #include "VoxelMaterial.h"
+#include <deque>
 
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Main Iter"), STAT_MAIN_ITER, STATGROUP_Voxel);
@@ -25,16 +26,12 @@ FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector Chu
 	, bEnableAmbientOcclusion(bEnableAmbientOcclusion)
 	, RayMaxDistance(RayMaxDistance)
 	, RayCount(RayCount)
-	, LastOctree(nullptr)
 {
 
 }
 
 void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 {
-	OutSection.Reset();
-	return; // TODO
-
 	for (int i = 0; i < 17; i++)
 	{
 		for (int j = 0; j < 17; j++)
@@ -49,6 +46,25 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 	Data->BeginGet();
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CACHE);
+
+		FIntVector Size(CHUNKSIZE + 3, CHUNKSIZE + 3, CHUNKSIZE + 3);
+		Data->GetValuesAndMaterials(CachedValues, CachedMaterials, ChunkPosition - FIntVector(1, 1, 1), FIntVector::ZeroValue, Step(), Size, Size);
+
+		for (int X = -1; X < CHUNKSIZE + 2; X++)
+		{
+			for (int Y = -1; Y < CHUNKSIZE + 2; Y++)
+			{
+				for (int Z = -1; Z < CHUNKSIZE + 2; Z++)
+				{
+					float Value;
+					FVoxelMaterial Dummy;
+					GetValueAndMaterial(X * Step(), Y * Step(), Z * Step(), Value, Dummy);
+
+					check(Value == CachedValues[(X + 1) + (CHUNKSIZE + 3) * (Y + 1) + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * (Z + 1)]);
+				}
+			}
+		}
+
 		// Cache signs
 		for (int CubeX = 0; CubeX < 6; CubeX++)
 		{
@@ -72,16 +88,11 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 								const uint64 ONE = 1;
 								uint64 CurrentBit = ONE << (LocalX + 4 * LocalY + 4 * 4 * LocalZ);
 
-								float CurrentValue;
-								FVoxelMaterial CurrentMaterial;
-								Data->GetValueAndMaterial(X * Step() + ChunkPosition.X, Y * Step() + ChunkPosition.Y, Z * Step() + ChunkPosition.Z, CurrentValue, CurrentMaterial, LastOctree);
 
-								// TODO: not true, all values should be cached
-								if (X + 1 < 18 && Y + 1 < 18 && Z + 1 < 18) // Getting value out of this chunk for the "continue" optimization after
-								{
-									CachedValues[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentValue;
-									CachedMaterials[(X + 1) + 18 * (Y + 1) + 18 * 18 * (Z + 1)] = CurrentMaterial;
-								}
+								check(0 <= X + 1 && X + 1 < CHUNKSIZE + 3);
+								check(0 <= Y + 1 && Y + 1 < CHUNKSIZE + 3);
+								check(0 <= Z + 1 && Z + 1 < CHUNKSIZE + 3);
+								float CurrentValue = CachedValues[(X + 1) + (CHUNKSIZE + 3) * (Y + 1) + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * (Z + 1)];
 
 								bool Sign = CurrentValue > 0;
 								CurrentCube = CurrentCube | (CurrentBit * Sign);
@@ -94,10 +105,10 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 	}
 
 	// Create forward lists
-	std::forward_list<FVector> Vertices;
-	std::forward_list<FColor> Colors;
-	std::forward_list<int32> Triangles;
-	std::forward_list<TPair<int32, int32>> VerticesWithSamePosition;
+	std::deque<FVector> Vertices;
+	std::deque<FColor> Colors;
+	std::deque<int32> Triangles;
+	std::deque<TPair<int32, int32>> VerticesWithSamePosition;
 	int VerticesSize = 0;
 	int TrianglesSize = 0;
 
@@ -383,7 +394,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		// Create section
 		OutSection.Reset();
 		OutSection.bEnableCollision = bComputeCollisions;
-		OutSection.bSectionVisible = false;
+		OutSection.bSectionVisible = true;
 		OutSection.SectionLocalBox.Min = -FVector::OneVector * Step();
 		OutSection.SectionLocalBox.Max = 18 * FVector::OneVector * Step();
 		OutSection.SectionLocalBox.IsValid = true;
@@ -400,12 +411,14 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 
 		int32 AllVertexIndex = 0;
 		int32 FilteredVertexIndex = 0;
+		auto VerticesIt = Vertices.begin();
+		auto ColorsIt = Colors.begin();
 		for (int i = VerticesSize - 1; i >= 0; i--)
 		{
-			FVector Vertex = Vertices.front();
-			FColor Color = Colors.front();
-			Vertices.pop_front(); // TODO: don't pop!
-			Colors.pop_front();
+			FVector Vertex = *VerticesIt;
+			FColor Color = *ColorsIt;
+			++VerticesIt;
+			++ColorsIt;
 
 			if ((Vertex.X < -KINDA_SMALL_NUMBER) || (Vertex.X > Size() + KINDA_SMALL_NUMBER) ||
 				(Vertex.Y < -KINDA_SMALL_NUMBER) || (Vertex.Y > Size() + KINDA_SMALL_NUMBER) ||
@@ -454,16 +467,16 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		Normals.SetNumZeroed(FilteredVertexCount); // Zeroed because +=
 
 		int32 FilteredTriangleIndex = 0;
-		while (!Triangles.empty())
+		for (auto TrianglesIt = Triangles.begin(); TrianglesIt != Triangles.end(); )
 		{
-			int32 A = Triangles.front();
-			Triangles.pop_front();
+			int32 A = *TrianglesIt;
+			++TrianglesIt;
 
-			int32 B = Triangles.front();
-			Triangles.pop_front();
+			int32 B = *TrianglesIt;
+			++TrianglesIt;
 
-			int32 C = Triangles.front();
-			Triangles.pop_front();
+			int32 C = *TrianglesIt;
+			++TrianglesIt;
 
 			{
 				// Add trig
@@ -538,6 +551,9 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 			}
 		}
 	}
+
+	Vertices.clear();
+	Triangles.clear();
 
 	check(Vertices.empty());
 	check(Triangles.empty());
@@ -711,12 +727,14 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 			TArray<FVector> TransitionVertex;
 			TransitionVertex.SetNumUninitialized(TransitionsVerticesSize);
 
+			auto VerticesIt = Vertices.begin();
+			auto ColorsIt = Colors.begin();
 			for (int TransitionVertexIndex = TransitionsVerticesSize - 1; TransitionVertexIndex >= 0; TransitionVertexIndex--)
 			{
-				FVector Vertex = Vertices.front();
-				FColor Color = Colors.front();
-				Vertices.pop_front();
-				Colors.pop_front();
+				FVector Vertex = *VerticesIt;
+				FColor Color = *ColorsIt;
+				++VerticesIt;
+				++ColorsIt;
 
 				FVoxelProcMeshVertex& ProcMeshVertex = OutSection.ProcVertexBuffer[FilteredVertexCount + TransitionVertexIndex];
 				ProcMeshVertex.Position = Vertex;
@@ -733,20 +751,20 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 			Normals.SetNumUninitialized(TransitionsVerticesSize);
 
 			int32 TransitionTriangleIndex = 0;
-			while (!Triangles.empty())
+			for (auto TrianglesIt = Triangles.begin(); TrianglesIt != Triangles.end(); )
 			{
-				int32 A = Triangles.front();
+				int32 A = *TrianglesIt;
 				// OldVerticesSize - FilteredVertexCount because we need to offset index due to vertex removal for normals
 				int32 FA = A < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - A] : A - (OldVerticesSize - FilteredVertexCount);
-				Triangles.pop_front();
+				++TrianglesIt;
 
-				int32 B = Triangles.front();
+				int32 B = *TrianglesIt;
 				int32 FB = B < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - B] : B - (OldVerticesSize - FilteredVertexCount);
-				Triangles.pop_front();
+				++TrianglesIt;
 
-				int32 C = Triangles.front();
+				int32 C = *TrianglesIt;
 				int32 FC = C < OldVerticesSize ? AllToFiltered[OldVerticesSize - 1 - C] : C - (OldVerticesSize - FilteredVertexCount);
-				Triangles.pop_front();
+				++TrianglesIt;
 
 				check(FA != -1 && FB != -1 && FC != -1);
 
@@ -942,18 +960,26 @@ int FVoxelPolygonizer::Step()
 void FVoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	//SCOPE_CYCLE_COUNTER(STAT_GETVALUEANDCOLOR);
-	if ((X % Step() == 0) && (Y % Step() == 0) && (Z % Step() == 0) && (-1 <= X && X < 17 * Step()) && (-1 <= Y && Y < 17 * Step()) && (-1 <= Z && Z < 17 * Step()))
+	/*if ((X % Step() == 0) &&
+		(Y % Step() == 0) &&
+		(Z % Step() == 0) &&
+		(0 <= X + 1 && X + 1 < (CHUNKSIZE + 3) * Step()) &&
+		(0 <= Y + 1 && Y + 1 < (CHUNKSIZE + 3) * Step()) &&
+		(0 <= Z + 1 && Z + 1 < (CHUNKSIZE + 3) * Step()))
 	{
-		check(0 <= (X / Step() + 1) && (X / Step() + 1) < 18);
-		check(0 <= (Y / Step() + 1) && (Y / Step() + 1) < 18);
-		check(0 <= (Z / Step() + 1) && (Z / Step() + 1) < 18);
+		int I = X / Step() + 1;
+		int J = Y / Step() + 1;
+		int K = Z / Step() + 1;
+		check(0 <= I && I < (CHUNKSIZE + 3));
+		check(0 <= J && J < (CHUNKSIZE + 3));
+		check(0 <= K && K < (CHUNKSIZE + 3));
 
-		OutValue = CachedValues[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
-		OutMaterial = CachedMaterials[(X / Step() + 1) + 18 * (Y / Step() + 1) + 18 * 18 * (Z / Step() + 1)];
+		OutValue = CachedValues[I + (CHUNKSIZE + 3) * J + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * K];
+		OutMaterial = CachedMaterials[I + (CHUNKSIZE + 3) * J + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * K];
 	}
-	else
+	else*/
 	{
-		Data->GetValueAndMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutMaterial, LastOctree);
+		Data->GetValueAndMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutMaterial);
 	}
 }
 

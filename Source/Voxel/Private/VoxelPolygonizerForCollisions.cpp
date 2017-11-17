@@ -13,7 +13,6 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizerForCollisions ~ Cache"), STAT_CACHE_FC,
 FVoxelPolygonizerForCollisions::FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition)
 	: Data(Data)
 	, ChunkPosition(ChunkPosition)
-	, LastOctree(nullptr)
 {
 }
 
@@ -229,7 +228,7 @@ void FVoxelPolygonizerForCollisions::CreateSection(FProcMeshSection& OutSection)
 		SCOPE_CYCLE_COUNTER(STAT_CREATE_SECTION_FC);
 		// Create section
 		OutSection.Reset();
-		OutSection.bEnableCollision = false;
+		OutSection.bEnableCollision = true;
 		OutSection.bSectionVisible = true;
 		OutSection.SectionLocalBox.Min = -FVector::OneVector;
 		OutSection.SectionLocalBox.Max = FVector(CHUNKSIZE_FC, CHUNKSIZE_FC, CHUNKSIZE_FC);

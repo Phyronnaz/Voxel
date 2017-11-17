@@ -68,24 +68,78 @@ void FVoxelData::Reset()
 }
 void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
-	check(IsInWorld(Start.X, Start.Y, Start.Z));
-	check(IsInWorld(Start.X + Size.X, Start.Y + Size.Y, Start.Z + Size.Z));
-	MainOctree->GetValuesAndMaterials(Values, Materials, Start, StartIndex, Step, Size, ArraySize);
+	if (Size.X <= 0 || Size.Y <= 0 || Size.Z <= 0)
+	{
+		return;
+	}
+	if (UNLIKELY(!IsInWorld(Start.X, Start.Y, Start.Z) || !IsInWorld(Start.X + (Size.X - 1) * Step, Start.Y + (Size.Y - 1) * Step, Start.Z + (Size.Z - 1) * Step)))
+	{
+		for (int X = 0; X < Size.X; X++)
+		{
+			for (int Y = 0; Y < Size.Y; Y++)
+			{
+				for (int Z = 0; Z < Size.Z; Z++)
+				{
+					const int Index = (StartIndex.X + X) + ArraySize.X * (StartIndex.Y + Y) + ArraySize.X * ArraySize.Y * (StartIndex.Z + Z);
+					int RX = Start.X + X * Step;
+					int RY = Start.Y + Y * Step;
+					int RZ = Start.Z + Z * Step;
+					if (Values)
+					{
+						if (IsInWorld(RX, RY, RZ))
+						{
+							Values[Index] = GetValue(RX, RY, RZ);
+						}
+						else
+						{
+							Values[Index] = 1;
+						}
+					}
+					if (Materials)
+					{
+						if (IsInWorld(RX, RY, RZ))
+						{
+							Materials[Index] = GetMaterial(RX, RY, RZ);
+						}
+						else
+						{
+							Materials[Index] = FVoxelMaterial();
+						}
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		MainOctree->GetValuesAndMaterials(Values, Materials, Start, StartIndex, Step, Size, ArraySize);
+	}
 }
 
-float FVoxelData::GetValue(int X, int Y, int Z)
+float FVoxelData::GetValue(int X, int Y, int Z) const
 {
 	float Values[1];
 	GetValuesAndMaterials(Values, nullptr, FIntVector(X, Y, Z), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
 	return Values[0];
 }
 
-FVoxelMaterial FVoxelData::GetMaterial(int X, int Y, int Z)
+FVoxelMaterial FVoxelData::GetMaterial(int X, int Y, int Z) const
 {
 	FVoxelMaterial Materials[1];
 	GetValuesAndMaterials(nullptr, Materials, FIntVector(X, Y, Z), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
 	return Materials[0];
 }
+
+void FVoxelData::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
+{
+	float Values[1];
+	FVoxelMaterial Materials[1];
+	GetValuesAndMaterials(Values, Materials, FIntVector(X, Y, Z), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
+
+	OutValue = Values[0];
+	OutMaterial = Materials[0];
+}
+
 void FVoxelData::SetValue(int X, int Y, int Z, float Value)
 {
 	check(IsInWorld(X, Y, Z));

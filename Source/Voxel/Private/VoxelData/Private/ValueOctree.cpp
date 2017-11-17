@@ -32,24 +32,32 @@ bool FValueOctree::IsDirty() const
 
 void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMaterials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
+	if (Size.X <= 0 || Size.Y <= 0 || Size.Z <= 0)
+	{
+		return;
+	}
 	check(IsInOctree(Start.X, Start.Y, Start.Z));
-	check(IsInOctree(Start.X + Size.X, Start.Y + Size.Y, Start.Z + Size.Z));
+	check(IsInOctree(Start.X + (Size.X - 1) * Step, Start.Y + (Size.Y - 1) * Step, Start.Z + (Size.Z - 1) * Step));
 
 	if (IsLeaf())
 	{
 		if (UNLIKELY(IsDirty()))
 		{
-			for (int X = 0; X < Size.X; X += Step)
+			for (int I = 0; I < Size.X; I++)
 			{
-				for (int Y = 0; Y < Size.Y; Y += Step)
+				for (int J = 0; J < Size.Y; J++)
 				{
-					for (int Z = 0; Z < Size.Z; Z += Step)
+					for (int K = 0; K < Size.Z; K++)
 					{
+						const int X = Start.X + I * Step;
+						const int Y = Start.Y + J * Step;
+						const int Z = Start.Z + K * Step;
+
 						int LocalX, LocalY, LocalZ;
-						GlobalToLocal(Start.X + X, Start.Y + Y, Start.Z + Z, LocalX, LocalY, LocalZ);
+						GlobalToLocal(X, Y, Z, LocalX, LocalY, LocalZ);
 
 						const int LocalIndex = IndexFromCoordinates(LocalX, LocalY, LocalZ);
-						const int Index = (StartIndex.X + X) + ArraySize.X * (StartIndex.Y + Y) + ArraySize.X * ArraySize.Y * (StartIndex.Z + Z);
+						const int Index = (StartIndex.X + I) + ArraySize.X * (StartIndex.Y + J) + ArraySize.X * ArraySize.Y * (StartIndex.Z + K);
 
 						if (InValues)
 						{
@@ -78,42 +86,45 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 		const int StartY = Start.Y;
 		const int StartZ = Start.Z;
 
-		const int SizeX = Size.X;
-		const int SizeY = Size.Y;
-		const int SizeZ = Size.Z;
+		const int RealSizeX = Size.X * Step;
+		const int RealSizeY = Size.Y * Step;
+		const int RealSizeZ = Size.Z * Step;
+
+
 
 		const int StartXBot = StartX;
 		const int StartXTop = Position.X;
 		const int StartIBot = StartI;
 		const int StartITop = StartI + (Position.X - StartX);
-		const int SizeXBot = Position.X - StartX;
-		const int SizeXTop = SizeX - (Position.X - StartX);
+		const int SizeXBot = (Position.X - StartX) / Step;
+		const int SizeXTop = Size.X - (Position.X - StartX) / Step;;
 
 		const int StartYBot = StartY;
 		const int StartYTop = Position.Y;
 		const int StartJBot = StartJ;
 		const int StartJTop = StartJ + (Position.Y - StartY);
-		const int SizeYBot = Position.Y - StartY;
-		const int SizeYTop = SizeY - (Position.Y - StartY);
+		const int SizeYBot = (Position.Y - StartY) / Step;
+		const int SizeYTop = Size.Y - (Position.Y - StartY) / Step;;
 
 		const int StartZBot = StartZ;
 		const int StartZTop = Position.Z;
 		const int StartKBot = StartK;
 		const int StartKTop = StartK + (Position.Z - StartZ);
-		const int SizeZBot = Position.Z - StartZ;
-		const int SizeZTop = SizeZ - (Position.Z - StartZ);
+		const int SizeZBot = (Position.Z - StartZ) / Step;
+		const int SizeZTop = Size.Z - (Position.Z - StartZ) / Step;;
 
-		if (StartX + SizeX < Position.X || Position.X <= StartX)
+
+		if (StartX + RealSizeX < Position.X || Position.X <= StartX)
 		{
-			if (StartY + SizeY < Position.Y || Position.Y <= StartY)
+			if (StartY + RealSizeY < Position.Y || Position.Y <= StartY)
 			{
-				if (StartZ + SizeZ < Position.Z || Position.Z <= StartZ)
+				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartX, StartY, StartZ },
 					{ StartI, StartJ, StartK },
 						Step,
-						{ SizeX, SizeY, SizeZ },
+						{ Size.X, Size.Y, Size.Z },
 						ArraySize);
 				}
 				else
@@ -124,14 +135,14 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 					{ StartX, StartY, StartZBot },
 					{ StartI, StartJ, StartKBot },
 						Step,
-						{ SizeX, SizeY, SizeZBot },
+						{ Size.X, Size.Y, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX, StartY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartX, StartY, StartZTop },
 					{ StartI, StartJ, StartKTop },
 						Step,
-						{ SizeX, SizeY, SizeZTop },
+						{ Size.X, Size.Y, SizeZTop },
 						ArraySize);
 				}
 			}
@@ -139,20 +150,20 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 			{
 				// Split Y
 
-				if (StartZ + SizeZ < Position.Z || Position.Z <= StartZ)
+				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartX, StartYBot, StartZ },
 					{ StartI, StartJBot, StartK },
 						Step,
-						{ SizeX, SizeYBot, SizeZ },
+						{ Size.X, SizeYBot, Size.Z },
 						ArraySize);
 
-					GetChild(StartX, StartY + SizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartX, StartYTop, StartZ },
 					{ StartI, StartJTop, StartK },
 						Step,
-						{ SizeX, SizeYTop, SizeZ },
+						{ Size.X, SizeYTop, Size.Z },
 						ArraySize);
 				}
 				else
@@ -163,29 +174,29 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 					{ StartX, StartYBot, StartZBot },
 					{ StartI, StartJBot, StartKBot },
 						Step,
-						{ SizeX, SizeYBot, SizeZBot },
+						{ Size.X, SizeYBot, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX, StartY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartX, StartYBot, StartZTop },
 					{ StartI, StartJBot, StartKTop },
 						Step,
-						{ SizeX, SizeYBot, SizeZTop },
+						{ Size.X, SizeYBot, SizeZTop },
 						ArraySize);
 
 
-					GetChild(StartX, StartY + SizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartX, StartYTop, StartZBot },
 					{ StartI, StartJTop, StartKBot },
 						Step,
-						{ SizeX, SizeYTop, SizeZBot },
+						{ Size.X, SizeYTop, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX, StartY + SizeY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY + RealSizeY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartX, StartYTop, StartZTop },
 					{ StartI, StartJTop, StartKTop },
 						Step,
-						{ SizeX, SizeYTop, SizeZTop },
+						{ Size.X, SizeYTop, SizeZTop },
 						ArraySize);
 				}
 			}
@@ -194,22 +205,22 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 		{
 			// Split X
 
-			if (StartY + SizeY < Position.Y || Position.Y <= StartY)
+			if (StartY + RealSizeY < Position.Y || Position.Y <= StartY)
 			{
-				if (StartZ + SizeZ < Position.Z || Position.Z <= StartZ)
+				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXBot, StartY, StartZ },
 					{ StartIBot, StartJ, StartK },
 						Step,
-						{ SizeXBot, SizeY, SizeZ },
+						{ SizeXBot, Size.Y, Size.Z },
 						ArraySize);
 
-					GetChild(StartX + SizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartY, StartZ },
 					{ StartITop, StartJ, StartK },
 						Step,
-						{ SizeXTop, SizeY, SizeZ },
+						{ SizeXTop, Size.Y, Size.Z },
 						ArraySize);
 				}
 				else
@@ -220,29 +231,29 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 					{ StartXBot, StartY, StartZBot },
 					{ StartIBot, StartJ, StartKBot },
 						Step,
-						{ SizeXBot, SizeY, SizeZBot },
+						{ SizeXBot, Size.Y, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX, StartY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXBot, StartY, StartZTop },
 					{ StartIBot, StartJ, StartKTop },
 						Step,
-						{ SizeXBot, SizeY, SizeZTop },
+						{ SizeXBot, Size.Y, SizeZTop },
 						ArraySize);
 
 
-					GetChild(StartX + SizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartY, StartZBot },
 					{ StartITop, StartJ, StartKBot },
 						Step,
-						{ SizeXTop, SizeY, SizeZBot },
+						{ SizeXTop, Size.Y, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX + SizeX, StartY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartY, StartZTop },
 					{ StartITop, StartJ, StartKTop },
 						Step,
-						{ SizeXTop, SizeY, SizeZTop },
+						{ SizeXTop, Size.Y, SizeZTop },
 						ArraySize);
 				}
 			}
@@ -250,34 +261,34 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 			{
 				// Split Y
 
-				if (StartZ + SizeZ < Position.Z || Position.Z <= StartZ)
+				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXBot, StartYBot, StartZ },
 					{ StartIBot, StartJBot, StartK },
 						Step,
-						{ SizeXBot, SizeYBot, SizeZ },
+						{ SizeXBot, SizeYBot, Size.Z },
 						ArraySize);
 
-					GetChild(StartX, StartY + SizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXBot, StartYTop, StartZ },
 					{ StartIBot, StartJTop, StartK },
 						Step,
-						{ SizeXBot, SizeYTop, SizeZ },
+						{ SizeXBot, SizeYTop, Size.Z },
 						ArraySize);
 
-					GetChild(StartX + SizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartYBot, StartZ },
 					{ StartITop, StartJBot, StartK },
 						Step,
-						{ SizeXTop, SizeYBot, SizeZ },
+						{ SizeXTop, SizeYBot, Size.Z },
 						ArraySize);
 
-					GetChild(StartX + SizeX, StartY + SizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartYTop, StartZ },
 					{ StartITop, StartJTop, StartK },
 						Step,
-						{ SizeXTop, SizeYTop, SizeZ },
+						{ SizeXTop, SizeYTop, Size.Z },
 						ArraySize);
 				}
 				else
@@ -291,7 +302,7 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 						{ SizeXBot, SizeYBot, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX, StartY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXBot, StartYBot, StartZTop },
 					{ StartIBot, StartJBot, StartKTop },
 						Step,
@@ -299,14 +310,14 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 						ArraySize);
 
 
-					GetChild(StartX, StartY + SizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXBot, StartYTop, StartZBot },
 					{ StartIBot, StartJTop, StartKBot },
 						Step,
 						{ SizeXBot, SizeYTop, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX, StartY + SizeY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX, StartY + RealSizeY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXBot, StartYTop, StartZTop },
 					{ StartIBot, StartJTop, StartKTop },
 						Step,
@@ -317,14 +328,14 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 
 
 
-					GetChild(StartX + SizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartYBot, StartZBot },
 					{ StartITop, StartJBot, StartKBot },
 						Step,
 						{ SizeXTop, SizeYBot, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX + SizeX, StartY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartYBot, StartZTop },
 					{ StartITop, StartJBot, StartKTop },
 						Step,
@@ -332,14 +343,14 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 						ArraySize);
 
 
-					GetChild(StartX + SizeX, StartY + SizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartYTop, StartZBot },
 					{ StartITop, StartJTop, StartKBot },
 						Step,
 						{ SizeXTop, SizeYTop, SizeZBot },
 						ArraySize);
 
-					GetChild(StartX + SizeX, StartY + SizeY, StartZ + SizeZ)->GetValuesAndMaterials(InValues, InMaterials,
+					GetChild(StartX + RealSizeX, StartY + RealSizeY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
 					{ StartXTop, StartYTop, StartZTop },
 					{ StartITop, StartJTop, StartKTop },
 						Step,
@@ -586,23 +597,10 @@ void FValueOctree::SetAsDirty()
 
 	Values.SetNumUninitialized(16 * 16 * 16);
 	Materials.SetNumUninitialized(16 * 16 * 16);
-	for (int X = 0; X < 16; X++)
-	{
-		for (int Y = 0; Y < 16; Y++)
-		{
-			for (int Z = 0; Z < 16; Z++)
-			{
-				int GlobalX, GlobalY, GlobalZ;
-				LocalToGlobal(X, Y, Z, GlobalX, GlobalY, GlobalZ);
+	
+	FIntVector Min = GetMinimalCornerPosition();
+	GetValuesAndMaterials(Values.GetData(), Materials.GetData(), FIntVector(Min.X, Min.Y, Min.Z), FIntVector::ZeroValue, 1, FIntVector(16, 16, 16), FIntVector(16, 16, 16));
 
-				float Value = 0;
-				FVoxelMaterial Material;
-				//GetValueAndMaterial(GlobalX, GlobalY, GlobalZ, Value, Material); // TODO
-				Values[X + 16 * Y + 16 * 16 * Z] = Value;
-				Materials[X + 16 * Y + 16 * 16 * Z] = Material;
-			}
-		}
-	}
 	bIsDirty = true;
 }
 

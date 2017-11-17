@@ -22,6 +22,7 @@ public:
 
 	/**
 	 * Values or Materials can be null
+	 * Start.X <= X < Step * Size.X
 	 */
 	virtual void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 	{

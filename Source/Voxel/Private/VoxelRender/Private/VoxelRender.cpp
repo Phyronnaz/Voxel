@@ -45,8 +45,6 @@ public:
 
 	void UpdateComponentsForNewCenter()
 	{
-		// TODO
-		return;
 		if (!Invoker.IsValid())
 		{
 			UE_LOG(VoxelLog, Error, TEXT("Invalid invoker"));
@@ -76,10 +74,10 @@ public:
 
 			CurrentCenter += FIntVector(CHUNKSIZE_FC, 0, 0);
 
-			Update(true, false, false);
-			Update(true, true, false);
-			Update(true, false, true);
-			Update(true, true, true);
+			ChunksToUpdate.Add(FIntVector(true, false, false));
+			ChunksToUpdate.Add(FIntVector(true, true, false));
+			ChunksToUpdate.Add(FIntVector(true, false, true));
+			ChunksToUpdate.Add(FIntVector(true, true, true));
 		}
 		else if (-Delta.X > CHUNKSIZE_FC / 2)
 		{
@@ -102,10 +100,10 @@ public:
 
 			CurrentCenter -= FIntVector(CHUNKSIZE_FC, 0, 0);
 
-			Update(false, false, false);
-			Update(false, true, false);
-			Update(false, false, true);
-			Update(false, true, true);
+			ChunksToUpdate.Add(FIntVector(false, false, false));
+			ChunksToUpdate.Add(FIntVector(false, true, false));
+			ChunksToUpdate.Add(FIntVector(false, false, true));
+			ChunksToUpdate.Add(FIntVector(false, true, true));
 		}
 		if (Delta.Y > CHUNKSIZE_FC / 2)
 		{
@@ -128,10 +126,10 @@ public:
 
 			CurrentCenter += FIntVector(0, CHUNKSIZE_FC, 0);
 
-			Update(false, true, false);
-			Update(true, true, false);
-			Update(false, true, true);
-			Update(true, true, true);
+			ChunksToUpdate.Add(FIntVector(false, true, false));
+			ChunksToUpdate.Add(FIntVector(true, true, false));
+			ChunksToUpdate.Add(FIntVector(false, true, true));
+			ChunksToUpdate.Add(FIntVector(true, true, true));
 		}
 		else if (-Delta.Y > CHUNKSIZE_FC / 2)
 		{
@@ -154,10 +152,10 @@ public:
 
 			CurrentCenter -= FIntVector(0, CHUNKSIZE_FC, 0);
 
-			Update(false, false, false);
-			Update(true, false, false);
-			Update(false, false, true);
-			Update(true, false, true);
+			ChunksToUpdate.Add(FIntVector(false, false, false));
+			ChunksToUpdate.Add(FIntVector(true, false, false));
+			ChunksToUpdate.Add(FIntVector(false, false, true));
+			ChunksToUpdate.Add(FIntVector(true, false, true));
 		}
 		if (Delta.Z > CHUNKSIZE_FC / 2)
 		{
@@ -180,10 +178,10 @@ public:
 
 			CurrentCenter += FIntVector(0, 0, CHUNKSIZE_FC);
 
-			Update(false, false, true);
-			Update(true, false, true);
-			Update(false, true, true);
-			Update(true, true, true);
+			ChunksToUpdate.Add(FIntVector(false, false, true));
+			ChunksToUpdate.Add(FIntVector(true, false, true));
+			ChunksToUpdate.Add(FIntVector(false, true, true));
+			ChunksToUpdate.Add(FIntVector(true, true, true));
 		}
 		else if (-Delta.Z > CHUNKSIZE_FC / 2)
 		{
@@ -206,11 +204,17 @@ public:
 
 			CurrentCenter -= FIntVector(0, 0, CHUNKSIZE_FC);
 
-			Update(false, false, false);
-			Update(true, false, false);
-			Update(false, true, false);
-			Update(true, true, false);
+			ChunksToUpdate.Add(FIntVector(false, false, false));
+			ChunksToUpdate.Add(FIntVector(true, false, false));
+			ChunksToUpdate.Add(FIntVector(false, true, false));
+			ChunksToUpdate.Add(FIntVector(true, true, false));
 		}
+
+		for (auto P : ChunksToUpdate)
+		{
+			Update(P.X, P.Y, P.Z);
+		}
+		ChunksToUpdate.Reset();
 	}
 
 	void Update(bool bXMax, bool bYMax, bool bZMax)
@@ -256,7 +260,7 @@ public:
 					FVoxelBox CurrentBox(P * CHUNKSIZE_FC + CurrentCenter, (P + FIntVector(1, 1, 1)) * CHUNKSIZE_FC + CurrentCenter);
 					if (CurrentBox.Intersect(Box))
 					{
-						Update(i, j, k);
+						ChunksToUpdate.Add(FIntVector(i, j, k));
 					}
 				}
 			}
@@ -266,6 +270,7 @@ public:
 private:
 	FIntVector CurrentCenter;
 	UProceduralMeshComponent* Components[2][2][2];
+	TSet<FIntVector> ChunksToUpdate;
 };
 
 FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 HighPriorityMeshThreadCount, uint32 FoliageThreadCount)
@@ -295,9 +300,9 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 		Component->DestroyComponent();
 	}
 
-	MeshThreadPool->Create(MeshThreadCount, 64 * 1024);
-	HighPriorityMeshThreadPool->Create(HighPriorityMeshThreadCount, 64 * 1024, TPri_AboveNormal);
-	FoliageThreadPool->Create(FoliageThreadCount, 32 * 1024);
+	MeshThreadPool->Create(MeshThreadCount, 1024 * 1024);
+	HighPriorityMeshThreadPool->Create(HighPriorityMeshThreadCount, 1024 * 1024, TPri_AboveNormal);
+	FoliageThreadPool->Create(FoliageThreadCount, 1024 * 1024);
 
 	MainOctree = MakeShareable(new FChunkOctree(this, FIntVector::ZeroValue, Data->Depth, FOctree::GetTopIdFromDepth(Data->Depth)));
 }
@@ -382,14 +387,6 @@ void FVoxelRender::Tick(float DeltaTime)
 		}
 	}
 	ChunksToDelete.remove_if([](FChunkToDelete ChunkToDelete) { return ChunkToDelete.TimeLeft < 0; });
-
-	if (CollisionComponents.Num())
-	{
-		for (int i = 0; i < 20; i++)
-		{
-			CollisionComponents[0]->Update(0, 0, 0);
-		}
-	}
 }
 
 void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)

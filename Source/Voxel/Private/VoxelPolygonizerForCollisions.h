@@ -21,7 +21,6 @@ private:
 	FVoxelData* const Data;
 	FIntVector const ChunkPosition;
 
-	FValueOctree* LastOctree;
 
 	// Cache of the sign of the values. Can lead to crash if value changed between cache and 2nd access
 	uint64 CachedSigns[216];
