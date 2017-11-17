@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "0.6",
+	"VersionName": "0.6.1",
 	"FriendlyName": "Voxel",
 	"Description": "Voxel plugin",
 	"Category": "Terrain",
@@ -19,16 +19,18 @@
 			"Name": "Voxel",
 			"Type": "Runtime",
 			"LoadingPhase": "PreDefault",
-			"BlacklistPlatforms": [
-				"Win32"
+			"WhitelistPlatforms" :
+			[
+				"Win64"
 			]
 		},
 		{
 			"Name": "VoxelEditor",
 			"Type": "Editor",
 			"LoadingPhase": "Default",
-			"BlacklistPlatforms": [
-				"Win32"
+			"WhitelistPlatforms" :
+			[
+				"Win64"
 			]
 		}
 	],

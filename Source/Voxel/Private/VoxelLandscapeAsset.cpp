@@ -119,7 +119,7 @@ FVoxelBox FDecompressedVoxelLandscapeAsset::GetBounds()
 
 	FVoxelBox Box;
 	Box.Min = Bound * -1;
-	Box.Max = Bound;
+	Box.Max = Bound - FIntVector(1, 1, 1);
 
 	return Box;
 }

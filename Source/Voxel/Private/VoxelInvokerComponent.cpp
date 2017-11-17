@@ -13,18 +13,17 @@ UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOf
 
 bool UVoxelInvokerComponent::IsForPhysicsOnly()
 {
-	// TODO: Check for when in editor + no pawn
-	return !Cast<APawn>(GetOwner())->IsLocallyControlled();
+	return !GetWorld()->IsEditorWorld() && Cast<APawn>(GetOwner()) && !Cast<APawn>(GetOwner())->IsLocallyControlled();
 }
 
 void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (Cast<APawn>(GetOwner())->IsLocallyControlled())
+	/*if (Cast<APawn>(GetOwner())->IsLocallyControlled())
 	{
 		DrawDebugPoint(GetWorld(), GetOwner()->GetActorLocation(), 100, FColor::Red, false, DeltaTime * 1.1f, 0);
-	}
+	}*/
 
 	if (bNeedUpdate)
 	{
