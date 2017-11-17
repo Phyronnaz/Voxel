@@ -15,11 +15,24 @@ FVoxelChunkSave::FVoxelChunkSave()
 
 }
 
-FVoxelChunkSave::FVoxelChunkSave(uint64 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FVoxelMaterial, TFixedAllocator<16 * 16 * 16>>& Materials)
+FVoxelChunkSave::FVoxelChunkSave(uint64 Id, FIntVector Position, float InValues[16 * 16 * 16], FVoxelMaterial InMaterials[16 * 16 * 16])
 	: Id(Id)
-	, Values(Values)
-	, Materials(Materials)
 {
+	Values.SetNumUninitialized(16 * 16 * 16);
+	Materials.SetNumUninitialized(16 * 16 * 16);
+
+	for (int X = 0; X < 16; X++)
+	{
+		for (int Y = 0; Y < 16; Y++)
+		{
+			for (int Z = 0; Z < 16; Z++)
+			{
+				const int Index = X + 16 * Y + 16 * 16 * Z;
+				Values[Index] = InValues[Index];
+				Materials[Index] = InMaterials[Index];
+			}
+		}
+	}
 }
 
 FVoxelWorldSave::FVoxelWorldSave()

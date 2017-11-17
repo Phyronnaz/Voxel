@@ -36,7 +36,6 @@ public:
 	FVoxelData* const Data;
 
 	FQueuedThreadPool* const MeshThreadPool;
-	FQueuedThreadPool* const HighPriorityMeshThreadPool;
 	FQueuedThreadPool* const FoliageThreadPool;
 
 

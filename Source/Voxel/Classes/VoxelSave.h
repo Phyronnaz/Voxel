@@ -17,7 +17,7 @@ struct FVoxelChunkSave
 
 	FVoxelChunkSave();
 
-	FVoxelChunkSave(uint64 Id, FIntVector Position, TArray<float, TFixedAllocator<16 * 16 * 16>> Values, TArray<FVoxelMaterial, TFixedAllocator<16 * 16 * 16>>& Materials);
+	FVoxelChunkSave(uint64 Id, FIntVector Position, float Values[16 * 16 * 16], FVoxelMaterial Materials[16 * 16 * 16]);
 };
 
 FORCEINLINE FArchive& operator<<(FArchive &Ar, FVoxelChunkSave& Save)

@@ -98,9 +98,9 @@ private:
 	TArray<FValueOctree*, TFixedAllocator<8>> Childs;
 
 	// Values if dirty
-	TArray<float, TFixedAllocator<16 * 16 * 16>> Values;
+	float Values[16 * 16 * 16];
 	// Materials if dirty
-	TArray<FVoxelMaterial, TFixedAllocator<16 * 16 * 16>> Materials;
+	FVoxelMaterial Materials[16 * 16 * 16];
 
 	bool bIsDirty;
 

@@ -32,7 +32,8 @@ bool FValueOctree::IsDirty() const
 
 void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMaterials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
-	if (Size.X <= 0 || Size.Y <= 0 || Size.Z <= 0)
+	check(Size.GetMin() >= 0);
+	if (Size.X == 0 || Size.Y == 0 || Size.Z == 0)
 	{
 		return;
 	}
@@ -76,6 +77,10 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 			WorldGenerator->GetValuesAndMaterials(InValues, InMaterials, Start, StartIndex, Step, Size, ArraySize);
 		}
 	}
+	else if (Size.X == 1 && Size.Y == 1 && Size.Z == 1 && false)
+	{
+		GetChild(Start.X, Start.Y, Start.Z)->GetValuesAndMaterials(InValues, InMaterials, Start, StartIndex, Step, Size, ArraySize);
+	}
 	else
 	{
 		const int StartI = StartIndex.X;
@@ -86,32 +91,32 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 		const int StartY = Start.Y;
 		const int StartZ = Start.Z;
 
-		const int RealSizeX = Size.X * Step;
-		const int RealSizeY = Size.Y * Step;
-		const int RealSizeZ = Size.Z * Step;
+		const int RealSizeX = (Size.X - 1) * Step;
+		const int RealSizeY = (Size.Y - 1) * Step;
+		const int RealSizeZ = (Size.Z - 1) * Step;
 
 
 
 		const int StartXBot = StartX;
-		const int StartXTop = Position.X;
 		const int StartIBot = StartI;
-		const int StartITop = StartI + (Position.X - StartX);
 		const int SizeXBot = (Position.X - StartX) / Step;
-		const int SizeXTop = Size.X - (Position.X - StartX) / Step;;
+		const int StartXTop = StartXBot + SizeXBot * Step;
+		const int StartITop = StartIBot + SizeXBot;
+		const int SizeXTop = Size.X - SizeXBot;
 
 		const int StartYBot = StartY;
-		const int StartYTop = Position.Y;
 		const int StartJBot = StartJ;
-		const int StartJTop = StartJ + (Position.Y - StartY);
 		const int SizeYBot = (Position.Y - StartY) / Step;
-		const int SizeYTop = Size.Y - (Position.Y - StartY) / Step;;
+		const int StartYTop = StartYBot + SizeYBot * Step;
+		const int StartJTop = StartJBot + SizeYBot;
+		const int SizeYTop = Size.Y - SizeYBot;
 
 		const int StartZBot = StartZ;
-		const int StartZTop = Position.Z;
 		const int StartKBot = StartK;
-		const int StartKTop = StartK + (Position.Z - StartZ);
 		const int SizeZBot = (Position.Z - StartZ) / Step;
-		const int SizeZTop = Size.Z - (Position.Z - StartZ) / Step;;
+		const int StartZTop = StartZBot + SizeZBot * Step;
+		const int StartKTop = StartKBot + SizeZBot;
+		const int SizeZTop = Size.Z - SizeZBot;
 
 
 		if (StartX + RealSizeX < Position.X || Position.X <= StartX)
@@ -441,12 +446,19 @@ void FValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave
 		if (Save.front().Id == Id)
 		{
 			bIsDirty = true;
-			Values = Save.front().Values;
-			Materials = Save.front().Materials;
+			for (int X = 0; X < 16; X++)
+			{
+				for (int Y = 0; Y < 16; Y++)
+				{
+					for (int Z = 0; Z < 16; Z++)
+					{
+						const int Index = X + 16 * Y + 16 * 16 * Z;
+						Values[Index] = Save.front().Values[Index];
+						Materials[Index] = Save.front().Materials[Index];
+					}
+				}
+			}
 			Save.pop_front();
-
-			check(Values.Num() == 4096);
-			check(Materials.Num() == 4096);
 
 			// Update neighbors
 			const int S = Size();
@@ -488,6 +500,7 @@ void FValueOctree::AddChunksToDiffLists(std::forward_list<FVoxelValueDiff>& OutV
 
 			for (int Index : DirtyValues)
 			{
+				check(0 <= Index && Index < 16 * 16 * 16);
 				OutValueDiffList.push_front(FVoxelValueDiff(Id, Index, Values[Index]));
 			}
 			for (int Index : DirtyMaterials)
@@ -524,6 +537,7 @@ void FValueOctree::LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FV
 				SetAsDirty();
 			}
 
+			check(0 <= ValuesDiffs.front().Index && ValuesDiffs.front().Index < 16 * 16 * 16);
 			Values[ValuesDiffs.front().Index] = ValuesDiffs.front().Value;
 
 			int X, Y, Z;
@@ -595,22 +609,24 @@ void FValueOctree::SetAsDirty()
 	check(!IsDirty());
 	check(Depth == 0);
 
-	Values.SetNumUninitialized(16 * 16 * 16);
-	Materials.SetNumUninitialized(16 * 16 * 16);
-	
 	FIntVector Min = GetMinimalCornerPosition();
-	GetValuesAndMaterials(Values.GetData(), Materials.GetData(), FIntVector(Min.X, Min.Y, Min.Z), FIntVector::ZeroValue, 1, FIntVector(16, 16, 16), FIntVector(16, 16, 16));
+	GetValuesAndMaterials(Values, Materials, FIntVector(Min.X, Min.Y, Min.Z), FIntVector::ZeroValue, 1, FIntVector(16, 16, 16), FIntVector(16, 16, 16));
 
 	bIsDirty = true;
 }
 
-FORCEINLINE int FValueOctree::IndexFromCoordinates(int X, int Y, int Z) const
+int FValueOctree::IndexFromCoordinates(int X, int Y, int Z) const
 {
+	check(0 <= X && X < 16);
+	check(0 <= Y && Y < 16);
+	check(0 <= Z && Z < 16);
 	return X + 16 * Y + 16 * 16 * Z;
 }
 
-FORCEINLINE void FValueOctree::CoordinatesFromIndex(int Index, int& OutX, int& OutY, int& OutZ) const
+void FValueOctree::CoordinatesFromIndex(int Index, int& OutX, int& OutY, int& OutZ) const
 {
+	check(0 <= Index && Index < 16 * 16 * 16);
+
 	OutX = Index % 16;
 
 	Index = (Index - OutX) / 16;

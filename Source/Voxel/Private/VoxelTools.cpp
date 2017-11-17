@@ -63,9 +63,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 						Value *= HardnessMultiplier;
 						Value *= (bAdd ? -1 : 1);
 
-						float OldValue;
-						FVoxelMaterial Dummy;
-						Data->GetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, OldValue, Dummy, LastOctree);
+						float OldValue = Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);						
 
 						if ((bAdd && (Value <= 0 || OldValue * Value >= 0)) || (!bAdd && (Value > 0 || OldValue * Value > 0)))
 						{
@@ -148,9 +146,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 					const float Distance = FVector(X, Y, Z).Size();
 
 
-					float Dummy;
-					FVoxelMaterial Material;
-					Data->GetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Dummy, Material, LastOctree);
+					FVoxelMaterial Material = Data->GetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);					
 
 					if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
 					{
@@ -507,7 +503,7 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 					{
 						float OldValue;
 						FVoxelMaterial OldMaterial;
-						Data->GetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, OldValue, OldMaterial, LastOctree);
+						Data->GetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, OldValue, OldMaterial);
 
 						const FVoxelMaterial NewMaterial = (VoxelType.GetMaterialType() == UseMaterial) ? AssetMaterial : OldMaterial;
 						float NewValue;
@@ -692,6 +688,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, const bool b
 	}
 }
 
+// TODO: Update to new FVoxelData API
 void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected, bool bAsync, float ValueMultiplier)
 {
 	SCOPE_CYCLE_COUNTER(STAT_RemoveNonConnectedBlocks);

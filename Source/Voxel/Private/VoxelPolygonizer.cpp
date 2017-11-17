@@ -48,22 +48,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		SCOPE_CYCLE_COUNTER(STAT_CACHE);
 
 		FIntVector Size(CHUNKSIZE + 3, CHUNKSIZE + 3, CHUNKSIZE + 3);
-		Data->GetValuesAndMaterials(CachedValues, CachedMaterials, ChunkPosition - FIntVector(1, 1, 1), FIntVector::ZeroValue, Step(), Size, Size);
-
-		for (int X = -1; X < CHUNKSIZE + 2; X++)
-		{
-			for (int Y = -1; Y < CHUNKSIZE + 2; Y++)
-			{
-				for (int Z = -1; Z < CHUNKSIZE + 2; Z++)
-				{
-					float Value;
-					FVoxelMaterial Dummy;
-					GetValueAndMaterial(X * Step(), Y * Step(), Z * Step(), Value, Dummy);
-
-					check(Value == CachedValues[(X + 1) + (CHUNKSIZE + 3) * (Y + 1) + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * (Z + 1)]);
-				}
-			}
-		}
+		Data->GetValuesAndMaterials(CachedValues, CachedMaterials, ChunkPosition - FIntVector(1, 1, 1) * Step(), FIntVector::ZeroValue, Step(), Size, Size);
 
 		// Cache signs
 		for (int CubeX = 0; CubeX < 6; CubeX++)
@@ -169,14 +154,14 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 
 									FVoxelMaterial CornerMaterials[8];
 
-									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 0), CornerValues[0], CornerMaterials[0]);
-									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 0), CornerValues[1], CornerMaterials[1]);
-									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 0), CornerValues[2], CornerMaterials[2]);
-									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 0), CornerValues[3], CornerMaterials[3]);
-									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 0), Step() * (Z + 1), CornerValues[4], CornerMaterials[4]);
-									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 0), Step() * (Z + 1), CornerValues[5], CornerMaterials[5]);
-									GetValueAndMaterial(Step() * (X + 0), Step() * (Y + 1), Step() * (Z + 1), CornerValues[6], CornerMaterials[6]);
-									GetValueAndMaterial(Step() * (X + 1), Step() * (Y + 1), Step() * (Z + 1), CornerValues[7], CornerMaterials[7]);
+									GetValueAndMaterialFromCache(X + 0, Y + 0, Z + 0, CornerValues[0], CornerMaterials[0]);
+									GetValueAndMaterialFromCache(X + 1, Y + 0, Z + 0, CornerValues[1], CornerMaterials[1]);
+									GetValueAndMaterialFromCache(X + 0, Y + 1, Z + 0, CornerValues[2], CornerMaterials[2]);
+									GetValueAndMaterialFromCache(X + 1, Y + 1, Z + 0, CornerValues[3], CornerMaterials[3]);
+									GetValueAndMaterialFromCache(X + 0, Y + 0, Z + 1, CornerValues[4], CornerMaterials[4]);
+									GetValueAndMaterialFromCache(X + 1, Y + 0, Z + 1, CornerValues[5], CornerMaterials[5]);
+									GetValueAndMaterialFromCache(X + 0, Y + 1, Z + 1, CornerValues[6], CornerMaterials[6]);
+									GetValueAndMaterialFromCache(X + 1, Y + 1, Z + 1, CornerValues[7], CornerMaterials[7]);
 
 									check(CaseCode == (
 										((CornerValues[0] > 0) << 0)
@@ -232,7 +217,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 										{
 											FVoxelMaterial Material;
 											float Value;
-											GetValueAndMaterial(
+											GetValueAndMaterialNoCache(
 												(X - static_cast<bool>((CacheDirection & 0x01) != 0)) * Step(),
 												(Y - static_cast<bool>((CacheDirection & 0x02) != 0)) * Step(),
 												(Z - static_cast<bool>((CacheDirection & 0x04) != 0)) * Step(),
@@ -883,104 +868,41 @@ int FVoxelPolygonizer::Step()
 }
 
 
-//FColor VoxelPolygonizer::GetMajorColor(int X, int Y, int Z, uint32 CellWidth)
-//{
-//	// Too slow
-//	check(false);
-//
-//	SCOPE_CYCLE_COUNTER(STAT_MAJOR_COLOR);
-//
-//	FColor Colors[8];
-//	if (CellWidth == 1)
-//	{
-//		Colors[0] = GetColor(X + 0, Y + 0, Z + 0);
-//		Colors[1] = GetColor(X + 1, Y + 0, Z + 0);
-//		Colors[2] = GetColor(X + 0, Y + 1, Z + 0);
-//		Colors[3] = GetColor(X + 1, Y + 1, Z + 0);
-//		Colors[4] = GetColor(X + 0, Y + 0, Z + 1);
-//		Colors[5] = GetColor(X + 1, Y + 0, Z + 1);
-//		Colors[6] = GetColor(X + 0, Y + 1, Z + 1);
-//		Colors[7] = GetColor(X + 1, Y + 1, Z + 1);
-//	}
-//	else
-//	{
-//		uint32 HalfWidth = CellWidth / 2;
-//		Colors[0] = GetMajorColor(X + 000000000, Y + 000000000, Z + 000000000, HalfWidth);
-//		Colors[1] = GetMajorColor(X + HalfWidth, Y + 000000000, Z + 000000000, HalfWidth);
-//		Colors[2] = GetMajorColor(X + 000000000, Y + HalfWidth, Z + 000000000, HalfWidth);
-//		Colors[3] = GetMajorColor(X + HalfWidth, Y + HalfWidth, Z + 000000000, HalfWidth);
-//		Colors[4] = GetMajorColor(X + 000000000, Y + 000000000, Z + HalfWidth, HalfWidth);
-//		Colors[5] = GetMajorColor(X + HalfWidth, Y + 000000000, Z + HalfWidth, HalfWidth);
-//		Colors[6] = GetMajorColor(X + 000000000, Y + HalfWidth, Z + HalfWidth, HalfWidth);
-//		Colors[7] = GetMajorColor(X + HalfWidth, Y + HalfWidth, Z + HalfWidth, HalfWidth);
-//	}
-//	// Reground same colors and count them
-//	FColor SingleColors[8];
-//	uint8 SingleColorsCount[8];
-//	uint8 NumberOfDifferentColors = 0;
-//
-//	// Add Colors to the lists
-//	for (int i = 1; i < 8; i++)
-//	{
-//		bool AlreadyInList = false;
-//		for (int j = 0; j < NumberOfDifferentColors; j++)
-//		{
-//			if (Colors[i] == SingleColors[j])
-//			{
-//				SingleColorsCount[j]++;
-//				AlreadyInList = true;
-//				break;
-//			}
-//		}
-//		if (!AlreadyInList)
-//		{
-//			SingleColors[NumberOfDifferentColors] = Colors[i];
-//			SingleColorsCount[NumberOfDifferentColors] = 1;
-//			NumberOfDifferentColors++;
-//		}
-//	}
-//	check(NumberOfDifferentColors != 0);
-//
-//	// Get max
-//	uint8 MaxCount = 0;
-//	uint8 MaxIndex = -1;
-//	for (int i = 0; i < NumberOfDifferentColors; i++)
-//	{
-//		if (SingleColorsCount[i] > MaxCount)
-//		{
-//			MaxCount = SingleColorsCount[i];
-//			MaxIndex = i;
-//		}
-//	}
-//	check(MaxIndex >= 0);
-//	return SingleColors[MaxIndex];
-////}
-
-
 void FVoxelPolygonizer::GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	//SCOPE_CYCLE_COUNTER(STAT_GETVALUEANDCOLOR);
-	/*if ((X % Step() == 0) &&
+	if ((X % Step() == 0) &&
 		(Y % Step() == 0) &&
 		(Z % Step() == 0) &&
 		(0 <= X + 1 && X + 1 < (CHUNKSIZE + 3) * Step()) &&
 		(0 <= Y + 1 && Y + 1 < (CHUNKSIZE + 3) * Step()) &&
 		(0 <= Z + 1 && Z + 1 < (CHUNKSIZE + 3) * Step()))
 	{
-		int I = X / Step() + 1;
-		int J = Y / Step() + 1;
-		int K = Z / Step() + 1;
-		check(0 <= I && I < (CHUNKSIZE + 3));
-		check(0 <= J && J < (CHUNKSIZE + 3));
-		check(0 <= K && K < (CHUNKSIZE + 3));
-
-		OutValue = CachedValues[I + (CHUNKSIZE + 3) * J + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * K];
-		OutMaterial = CachedMaterials[I + (CHUNKSIZE + 3) * J + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * K];
+		GetValueAndMaterialFromCache(X / Step(), Y / Step(), Z / Step(), OutValue, OutMaterial);
 	}
-	else*/
+	else
 	{
-		Data->GetValueAndMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutMaterial);
+		GetValueAndMaterialNoCache(X, Y, Z, OutValue, OutMaterial);
 	}
+}
+
+void FVoxelPolygonizer::GetValueAndMaterialNoCache(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
+{
+	Data->GetValueAndMaterial(X + ChunkPosition.X, Y + ChunkPosition.Y, Z + ChunkPosition.Z, OutValue, OutMaterial);
+}
+
+void FVoxelPolygonizer::GetValueAndMaterialFromCache(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial)
+{
+	const int I = X + 1;
+	const int J = Y + 1;
+	const int K = Z + 1;
+
+	check(
+		(0 <= I && I < CHUNKSIZE + 3) &&
+		(0 <= J && J < CHUNKSIZE + 3) &&
+		(0 <= K && K < CHUNKSIZE + 3));
+	OutValue = CachedValues[I + (CHUNKSIZE + 3) * J + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * K];
+	OutMaterial = CachedMaterials[I + (CHUNKSIZE + 3) * J + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * K];
 }
 
 void FVoxelPolygonizer::Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial)
@@ -1094,11 +1016,11 @@ void FVoxelPolygonizer::InterpolateX(int MinX, int MaxX, const int Y, const int 
 
 		float ValueAtA;
 		FVoxelMaterial MaterialAtA;
-		GetValueAndMaterial(MinX, Y, Z, ValueAtA, MaterialAtA);
+		GetValueAndMaterialNoCache(MinX, Y, Z, ValueAtA, MaterialAtA);
 
 		float ValueAtMiddle;
 		FVoxelMaterial MaterialAtMiddle;
-		GetValueAndMaterial(MiddleX, Y, Z, ValueAtMiddle, MaterialAtMiddle);
+		GetValueAndMaterialNoCache(MiddleX, Y, Z, ValueAtMiddle, MaterialAtMiddle);
 
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
@@ -1115,8 +1037,8 @@ void FVoxelPolygonizer::InterpolateX(int MinX, int MaxX, const int Y, const int 
 	// A: Min / B: Max
 	float ValueAtA, ValueAtB;
 	FVoxelMaterial MaterialAtA, MaterialAtB;
-	GetValueAndMaterial(MinX, Y, Z, ValueAtA, MaterialAtA);
-	GetValueAndMaterial(MaxX, Y, Z, ValueAtB, MaterialAtB);
+	GetValueAndMaterialNoCache(MinX, Y, Z, ValueAtA, MaterialAtA);
+	GetValueAndMaterialNoCache(MaxX, Y, Z, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
 	const float t = ValueAtB / (ValueAtB - ValueAtA);
@@ -1134,11 +1056,11 @@ void FVoxelPolygonizer::InterpolateY(const int X, int MinY, int MaxY, const int 
 
 		float ValueAtA;
 		FVoxelMaterial MaterialAtA;
-		GetValueAndMaterial(X, MinY, Z, ValueAtA, MaterialAtA);
+		GetValueAndMaterialNoCache(X, MinY, Z, ValueAtA, MaterialAtA);
 
 		float ValueAtMiddle;
 		FVoxelMaterial MaterialAtMiddle;
-		GetValueAndMaterial(X, MiddleY, Z, ValueAtMiddle, MaterialAtMiddle);
+		GetValueAndMaterialNoCache(X, MiddleY, Z, ValueAtMiddle, MaterialAtMiddle);
 
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
@@ -1155,8 +1077,8 @@ void FVoxelPolygonizer::InterpolateY(const int X, int MinY, int MaxY, const int 
 	// A: Min / B: Max
 	float ValueAtA, ValueAtB;
 	FVoxelMaterial MaterialAtA, MaterialAtB;
-	GetValueAndMaterial(X, MinY, Z, ValueAtA, MaterialAtA);
-	GetValueAndMaterial(X, MaxY, Z, ValueAtB, MaterialAtB);
+	GetValueAndMaterialNoCache(X, MinY, Z, ValueAtA, MaterialAtA);
+	GetValueAndMaterialNoCache(X, MaxY, Z, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
 	const float t = ValueAtB / (ValueAtB - ValueAtA);
@@ -1174,11 +1096,11 @@ void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, int MinZ, int Max
 
 		float ValueAtA;
 		FVoxelMaterial MaterialAtA;
-		GetValueAndMaterial(X, Y, MinZ, ValueAtA, MaterialAtA);
+		GetValueAndMaterialNoCache(X, Y, MinZ, ValueAtA, MaterialAtA);
 
 		float ValueAtMiddle;
 		FVoxelMaterial MaterialAtMiddle;
-		GetValueAndMaterial(X, Y, MiddleZ, ValueAtMiddle, MaterialAtMiddle);
+		GetValueAndMaterialNoCache(X, Y, MiddleZ, ValueAtMiddle, MaterialAtMiddle);
 
 		if ((ValueAtA > 0) == (ValueAtMiddle > 0))
 		{
@@ -1195,8 +1117,8 @@ void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, int MinZ, int Max
 	// A: Min / B: Max
 	float ValueAtA, ValueAtB;
 	FVoxelMaterial MaterialAtA, MaterialAtB;
-	GetValueAndMaterial(X, Y, MinZ, ValueAtA, MaterialAtA);
-	GetValueAndMaterial(X, Y, MaxZ, ValueAtB, MaterialAtB);
+	GetValueAndMaterialNoCache(X, Y, MinZ, ValueAtA, MaterialAtA);
+	GetValueAndMaterialNoCache(X, Y, MaxZ, ValueAtB, MaterialAtB);
 
 	check(ValueAtA - ValueAtB != 0);
 	const float t = ValueAtB / (ValueAtB - ValueAtA);

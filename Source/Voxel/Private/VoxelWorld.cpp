@@ -455,6 +455,7 @@ void AVoxelWorld::CreateWorld()
 
 	// Create Data
 	Data = new FVoxelData(Depth, InstancedWorldGenerator, bMultiplayer);
+	Data->TestWorldGenerator(FIntVector::ZeroValue, FIntVector(25, 25, 25));
 
 	// Create Render
 	Render = new FVoxelRender(this, this, Data, MeshThreadCount, HighPriorityMeshThreadCount, FoliageThreadCount);

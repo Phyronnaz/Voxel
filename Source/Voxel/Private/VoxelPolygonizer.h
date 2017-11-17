@@ -50,10 +50,10 @@ private:
 	// Step between cubes
 	FORCEINLINE int Step();
 
-	// Too slow
-	//FColor GetMajorColor(int X, int Y, int Z, uint32 CellWidth);
-
 	FORCEINLINE void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
+	FORCEINLINE void GetValueAndMaterialNoCache(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
+	FORCEINLINE void GetValueAndMaterialFromCache(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
+
 	FORCEINLINE void Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial);
 
 	FORCEINLINE void SaveVertex(int X, int Y, int Z, short EdgeIndex, int Index);

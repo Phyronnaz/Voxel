@@ -47,9 +47,14 @@ public:
 		Alpha > 0.5 ? Index1 : Index2 = NewMin;
 	}
 
-	FORCEINLINE bool HasSameIndexesAs(FVoxelMaterial Other) const
+	FORCEINLINE bool HasSameIndexesAs(const FVoxelMaterial& Other) const
 	{
 		return (Index1 == Other.Index1) && (Index2 == Other.Index2);
+	}
+
+	FORCEINLINE bool operator==(const FVoxelMaterial& Other) const
+	{
+		return (Index1 == Other.Index1) && (Index2 == Other.Index2) && (Alpha == Other.Alpha);
 	}
 };
 

@@ -66,19 +66,54 @@ void FVoxelData::Reset()
 	delete MainOctree;
 	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth), bMultiplayer);
 }
-void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
+
+void FVoxelData::TestWorldGenerator(FIntVector Position, FIntVector InSize)
 {
-	if (Size.X <= 0 || Size.Y <= 0 || Size.Z <= 0)
+	BeginGet();
+	float* CachedValues = new float[InSize.X * InSize.Y * InSize.Z];
+	FVoxelMaterial* CachedMaterials = new FVoxelMaterial[InSize.X * InSize.Y * InSize.Z];
+	for (int Step = 1; Step < 3; Step++)
+	{
+		GetValuesAndMaterials(CachedValues, CachedMaterials, Position, FIntVector::ZeroValue, Step, InSize, InSize);
+
+		for (int X = 0; X < InSize.X; X++)
+		{
+			for (int Y = 0; Y < InSize.Y; Y++)
+			{
+				for (int Z = 0; Z < InSize.Z; Z++)
+				{
+					float Value;
+					FVoxelMaterial Material;
+					GetValueAndMaterial(Position.X + X * Step, Position.Y + Y * Step, Position.Z + Z * Step, Value, Material);
+
+					const int Index = X + InSize.X * Y + InSize.X * InSize.Y * Z;
+					float CachedValue = CachedValues[Index];
+					FVoxelMaterial CachedMaterial = CachedMaterials[Index];
+
+					check(Value == CachedValue);
+					check(Material == CachedMaterial);
+				}
+			}
+		}
+	}
+	delete CachedValues;
+	delete CachedMaterials;
+	EndGet();
+}
+
+void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& InSize, const FIntVector& ArraySize) const
+{
+	if (InSize.X <= 0 || InSize.Y <= 0 || InSize.Z <= 0)
 	{
 		return;
 	}
-	if (UNLIKELY(!IsInWorld(Start.X, Start.Y, Start.Z) || !IsInWorld(Start.X + (Size.X - 1) * Step, Start.Y + (Size.Y - 1) * Step, Start.Z + (Size.Z - 1) * Step)))
+	if (UNLIKELY(!IsInWorld(Start.X, Start.Y, Start.Z) || !IsInWorld(Start.X + (InSize.X - 1) * Step, Start.Y + (InSize.Y - 1) * Step, Start.Z + (InSize.Z - 1) * Step)))
 	{
-		for (int X = 0; X < Size.X; X++)
+		for (int X = 0; X < InSize.X; X++)
 		{
-			for (int Y = 0; Y < Size.Y; Y++)
+			for (int Y = 0; Y < InSize.Y; Y++)
 			{
-				for (int Z = 0; Z < Size.Z; Z++)
+				for (int Z = 0; Z < InSize.Z; Z++)
 				{
 					const int Index = (StartIndex.X + X) + ArraySize.X * (StartIndex.Y + Y) + ArraySize.X * ArraySize.Y * (StartIndex.Z + Z);
 					int RX = Start.X + X * Step;
@@ -92,7 +127,9 @@ void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[
 						}
 						else
 						{
-							Values[Index] = 1;
+							float CValues[1];
+							WorldGenerator->GetValuesAndMaterials(CValues, nullptr, FIntVector(RX, RY, RZ), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
+							Values[Index] = CValues[0];
 						}
 					}
 					if (Materials)
@@ -103,7 +140,9 @@ void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[
 						}
 						else
 						{
-							Materials[Index] = FVoxelMaterial();
+							FVoxelMaterial CMaterials[1];
+							WorldGenerator->GetValuesAndMaterials(nullptr, CMaterials, FIntVector(RX, RY, RZ), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
+							Materials[Index] = CMaterials[0];
 						}
 					}
 				}
@@ -112,7 +151,7 @@ void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[
 	}
 	else
 	{
-		MainOctree->GetValuesAndMaterials(Values, Materials, Start, StartIndex, Step, Size, ArraySize);
+		MainOctree->GetValuesAndMaterials(Values, Materials, Start, StartIndex, Step, InSize, ArraySize);
 	}
 }
 

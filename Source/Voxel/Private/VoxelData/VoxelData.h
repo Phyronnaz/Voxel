@@ -41,6 +41,8 @@ public:
 
 	void Reset();
 
+	void TestWorldGenerator(FIntVector Position, FIntVector Size);
+
 	/**
 	* Get value and color at position
 	* @param	Position	Position in voxel space
@@ -53,11 +55,6 @@ public:
 	FORCEINLINE FVoxelMaterial GetMaterial(int X, int Y, int Z) const;
 
 	FORCEINLINE void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial);
-
-	void GetValueAndMaterial(int X, int Y, int Z, float& OutValue, FVoxelMaterial& OutMaterial, FValueOctree*& LastOctree)
-	{
-
-	}
 
 	/**
 	 * Set value at position
