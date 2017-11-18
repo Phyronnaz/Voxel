@@ -24,7 +24,6 @@ AVoxelWorld::AVoxelWorld()
 	, NewVoxelSize(100)
 	, Seed(100)
 	, MeshThreadCount(4)
-	, HighPriorityMeshThreadCount(4)
 	, FoliageThreadCount(4)
 	, bMultiplayer(false)
 	, MultiplayerSyncRate(10)
@@ -33,6 +32,7 @@ AVoxelWorld::AVoxelWorld()
 	, InstancedWorldGenerator(nullptr)
 	, VoxelWorldEditor(nullptr)
 	, bComputeCollisions(false)
+	, bDebugCollisions(false)
 	, bEnableAmbientOcclusion(false)
 	, RayMaxDistance(5)
 	, RayCount(25)
@@ -359,6 +359,11 @@ bool AVoxelWorld::GetComputeCollisions() const
 	return bComputeCollisions;
 }
 
+bool AVoxelWorld::GetDebugCollisions() const
+{
+	return bDebugCollisions;
+}
+
 float AVoxelWorld::GetDeletionDelay() const
 {
 	return DeletionDelay;
@@ -457,7 +462,7 @@ void AVoxelWorld::CreateWorld()
 	Data->TestWorldGenerator(FIntVector::ZeroValue, FIntVector(25, 25, 25));
 
 	// Create Render
-	Render = new FVoxelRender(this, this, Data, MeshThreadCount, HighPriorityMeshThreadCount, FoliageThreadCount);
+	Render = new FVoxelRender(this, this, Data, MeshThreadCount, FoliageThreadCount);
 
 	bIsCreated = true;
 }

@@ -10,9 +10,10 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizerForCollisions ~ Main Iter"), STAT_MAIN_
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizerForCollisions ~ CreateSection"), STAT_CREATE_SECTION_FC, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizerForCollisions ~ Cache"), STAT_CACHE_FC, STATGROUP_Voxel);
 
-FVoxelPolygonizerForCollisions::FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition)
+FVoxelPolygonizerForCollisions::FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition, bool bEnableRender)
 	: Data(Data)
 	, ChunkPosition(ChunkPosition)
+	, bEnableRender(bEnableRender)
 {
 }
 
@@ -229,7 +230,7 @@ void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSec
 		// Create section
 		OutSection.Reset();
 		OutSection.bEnableCollision = true;
-		OutSection.bSectionVisible = true;
+		OutSection.bSectionVisible = bEnableRender;
 		OutSection.SectionLocalBox.Min = -FVector::OneVector;
 		OutSection.SectionLocalBox.Max = FVector(CHUNKSIZE_FC, CHUNKSIZE_FC, CHUNKSIZE_FC);
 		OutSection.SectionLocalBox.IsValid = true;

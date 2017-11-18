@@ -60,6 +60,7 @@ public:
 	FORCEINLINE UMaterialInterface* GetVoxelMaterial() const;
 	FORCEINLINE bool GetComputeTransitions() const;
 	FORCEINLINE bool GetComputeCollisions() const;
+	FORCEINLINE bool GetDebugCollisions() const;
 	FORCEINLINE float GetDeletionDelay() const;
 	FORCEINLINE bool GetEnableAmbientOcclusion() const;
 	FORCEINLINE int GetRayMaxDistance() const;
@@ -214,6 +215,9 @@ private:
 		bool bComputeTransitions;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		bool bDebugCollisions;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		float FoliageFPS;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
@@ -221,9 +225,6 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"), AdvancedDisplay)
 		int MeshThreadCount;
-
-	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"), AdvancedDisplay)
-		int HighPriorityMeshThreadCount;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"), AdvancedDisplay)
 		int FoliageThreadCount;

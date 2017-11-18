@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelWorldGenerator.h"
-#include "FastNoise/FastNoise.h"
-#include "FastNoise/FastNoiseSIMD/FastNoiseSIMD.h"
+#include "FastNoise.h"
+#include "FastNoiseSIMD.h"
 #include "PerlinNoiseWorldGenerator.generated.h"
 
 /**

@@ -90,18 +90,14 @@ FReply FVoxelWorldDetails::OnWorldPreviewToggle()
 	{
 		World->VoxelWorldEditorClass = AVoxelWorldEditor::StaticClass();
 
-		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-		TArray<FAssetData> AssetDataArray;
-		AssetRegistryModule.Get().GetAssetsByClass(UVoxelDataAsset::StaticClass()->GetFName(), AssetDataArray);
-
-		/*if (World->IsCreated())
+		if (World->IsCreated())
 		{
 			World->DestroyInEditor();
 		}
 		else
 		{
 			World->CreateInEditor();
-		}*/
+		}
 	}
 
 	return FReply::Handled();

@@ -13,13 +13,14 @@ struct FVoxelMaterial;
 class FVoxelPolygonizerForCollisions
 {
 public:
-	FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition);
+	FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition, bool bEnableRender);
 
 	void CreateSection(FVoxelProcMeshSection& OutSection);
 
 private:
 	FVoxelData* const Data;
 	FIntVector const ChunkPosition;
+	const bool bEnableRender;
 
 
 	// Cache of the sign of the values. Can lead to crash if value changed between cache and 2nd access

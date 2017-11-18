@@ -6,24 +6,27 @@
 #include "Engine.h"
 
 
-UVoxelInvokerComponent::UVoxelInvokerComponent() : bNeedUpdate(true), DistanceOffset(1000)
+UVoxelInvokerComponent::UVoxelInvokerComponent()
+	: bNeedUpdate(true)
+	, DistanceOffset(1000)
+	, bDebugMultiplayer(false)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
 bool UVoxelInvokerComponent::IsForPhysicsOnly()
 {
-	return !GetWorld()->IsEditorWorld() && Cast<APawn>(GetOwner()) && !Cast<APawn>(GetOwner())->IsLocallyControlled();
+	return Cast<APawn>(GetOwner()) && !Cast<APawn>(GetOwner())->IsLocallyControlled();
 }
 
 void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	/*if (Cast<APawn>(GetOwner())->IsLocallyControlled())
+	if (bDebugMultiplayer && !IsForPhysicsOnly())
 	{
 		DrawDebugPoint(GetWorld(), GetOwner()->GetActorLocation(), 100, FColor::Red, false, DeltaTime * 1.1f, 0);
-	}*/
+	}
 
 	if (bNeedUpdate)
 	{

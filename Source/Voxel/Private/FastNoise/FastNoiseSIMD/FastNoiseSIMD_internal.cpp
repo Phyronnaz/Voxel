@@ -1,3 +1,4 @@
+#pragma warning( disable : 4701 )
 // FastNoiseSIMD_internal.cpp
 //
 // MIT License
@@ -2418,3 +2419,4 @@ void SIMD_LEVEL_CLASS::FillSampledNoiseSet(float* noiseSet, FastNoiseVectorSet* 
 
 #undef SIMD_LEVEL
 #endif
+#pragma warning( default : 4701 )

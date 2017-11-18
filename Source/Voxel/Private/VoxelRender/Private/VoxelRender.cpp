@@ -224,7 +224,7 @@ public:
 
 		const FIntVector ChunkPosition = CurrentCenter + FIntVector(bXMax - 1, bYMax - 1, bZMax - 1) * CHUNKSIZE_FC;
 
-		FVoxelPolygonizerForCollisions Poly(World->GetData(), ChunkPosition);
+		FVoxelPolygonizerForCollisions Poly(World->GetData(), ChunkPosition, World->GetDebugCollisions());
 		FVoxelProcMeshSection Section;
 		Poly.CreateSection(Section);
 
@@ -276,7 +276,7 @@ private:
 	TSet<FIntVector> ChunksToUpdate;
 };
 
-FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 HighPriorityMeshThreadCount, uint32 FoliageThreadCount)
+FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 FoliageThreadCount)
 	: World(World)
 	, ChunksParent(ChunksParent)
 	, Data(Data)
@@ -392,8 +392,11 @@ void FVoxelRender::Tick(float DeltaTime)
 
 void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 {
-	VoxelInvokerComponents.push_front(Invoker);
-	CollisionComponents.Add(new FCollisionMeshHandler(Invoker, World));
+	if (Invoker.IsValid())
+	{
+		VoxelInvokerComponents.push_front(Invoker);
+		CollisionComponents.Add(new FCollisionMeshHandler(Invoker, World));
+	}
 }
 
 UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()

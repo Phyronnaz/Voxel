@@ -17,6 +17,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DistanceOffset;
 
+	// Will show a red point if local player
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		bool bDebugMultiplayer;
+
 	UVoxelInvokerComponent();
 
 	bool IsForPhysicsOnly();

@@ -95,7 +95,7 @@ AMD Piledriver - 2012
 
 struct FastNoiseVectorSet;
 
-class FastNoiseSIMD
+class VOXEL_API FastNoiseSIMD
 {
 public:
 

@@ -39,7 +39,7 @@ public:
 	FQueuedThreadPool* const FoliageThreadPool;
 
 
-	FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 HighPriorityMeshThreadCount, uint32 FoliageThreadCount);
+	FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 FoliageThreadCount);
 	~FVoxelRender();
 
 
