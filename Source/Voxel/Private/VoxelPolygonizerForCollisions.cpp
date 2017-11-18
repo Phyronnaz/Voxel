@@ -16,7 +16,7 @@ FVoxelPolygonizerForCollisions::FVoxelPolygonizerForCollisions(FVoxelData* Data,
 {
 }
 
-void FVoxelPolygonizerForCollisions::CreateSection(FProcMeshSection& OutSection)
+void FVoxelPolygonizerForCollisions::CreateSection(FVoxelProcMeshSection& OutSection)
 {
 	// Create forward lists
 	std::deque<FVector> Vertices;

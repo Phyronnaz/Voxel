@@ -7,10 +7,10 @@
 #include <list>
 
 class AVoxelWorld;
-class FVoxelData;;
+class FVoxelData;
 class FChunkOctree;
 class UVoxelChunkComponent;
-class UProceduralMeshComponent;
+class UVoxelProceduralMeshComponent;
 class FCollisionMeshHandler;
 
 struct FChunkToDelete

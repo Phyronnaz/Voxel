@@ -4,7 +4,7 @@
 #include "VoxelPrivatePCH.h"
 #include "VoxelChunkComponent.h"
 #include "ChunkOctree.h"
-#include "ProceduralMeshComponent.h"
+#include "VoxelProceduralMeshComponent.h"
 #include "VoxelPolygonizerForCollisions.h"
 #include "VoxelInvokerComponent.h"
 
@@ -31,7 +31,7 @@ public:
 			{
 				for (int k = 0; k < 2; k++)
 				{
-					UProceduralMeshComponent* Chunk = NewObject<UProceduralMeshComponent>(World, NAME_None, RF_Transient | RF_NonPIEDuplicateTransient);
+					UVoxelProceduralMeshComponent* Chunk = NewObject<UVoxelProceduralMeshComponent>(World, NAME_None, RF_Transient | RF_NonPIEDuplicateTransient);
 					Chunk->bUseAsyncCooking = true;
 					Chunk->SetupAttachment(World->GetRootComponent(), NAME_None);
 					Chunk->RegisterComponent();
@@ -56,7 +56,7 @@ public:
 
 		if (Delta.X > CHUNKSIZE_FC / 2)
 		{
-			UProceduralMeshComponent* tmp[2][2];
+			UVoxelProceduralMeshComponent* tmp[2][2];
 
 			tmp[0][0] = Components[0][0][0];
 			tmp[0][1] = Components[0][0][1];
@@ -82,7 +82,7 @@ public:
 		}
 		else if (-Delta.X > CHUNKSIZE_FC / 2)
 		{
-			UProceduralMeshComponent* tmp[2][2];
+			UVoxelProceduralMeshComponent* tmp[2][2];
 
 			tmp[0][0] = Components[1][0][0];
 			tmp[0][1] = Components[1][0][1];
@@ -108,7 +108,7 @@ public:
 		}
 		if (Delta.Y > CHUNKSIZE_FC / 2)
 		{
-			UProceduralMeshComponent* tmp[2][2];
+			UVoxelProceduralMeshComponent* tmp[2][2];
 
 			tmp[0][0] = Components[0][0][0];
 			tmp[0][1] = Components[0][0][1];
@@ -134,7 +134,7 @@ public:
 		}
 		else if (-Delta.Y > CHUNKSIZE_FC / 2)
 		{
-			UProceduralMeshComponent* tmp[2][2];
+			UVoxelProceduralMeshComponent* tmp[2][2];
 
 			tmp[0][0] = Components[0][1][0];
 			tmp[0][1] = Components[0][1][1];
@@ -160,7 +160,7 @@ public:
 		}
 		if (Delta.Z > CHUNKSIZE_FC / 2)
 		{
-			UProceduralMeshComponent* tmp[2][2];
+			UVoxelProceduralMeshComponent* tmp[2][2];
 
 			tmp[0][0] = Components[0][0][0];
 			tmp[0][1] = Components[0][1][0];
@@ -186,7 +186,7 @@ public:
 		}
 		else if (-Delta.Z > CHUNKSIZE_FC / 2)
 		{
-			UProceduralMeshComponent* tmp[2][2];
+			UVoxelProceduralMeshComponent* tmp[2][2];
 
 			tmp[0][0] = Components[0][0][1];
 			tmp[0][1] = Components[0][1][1];
@@ -225,7 +225,7 @@ public:
 		const FIntVector ChunkPosition = CurrentCenter + FIntVector(bXMax - 1, bYMax - 1, bZMax - 1) * CHUNKSIZE_FC;
 
 		FVoxelPolygonizerForCollisions Poly(World->GetData(), ChunkPosition);
-		FProcMeshSection Section;
+		FVoxelProcMeshSection Section;
 		Poly.CreateSection(Section);
 
 		Components[bXMax][bYMax][bZMax]->SetProcMeshSection(0, Section);
@@ -272,7 +272,7 @@ public:
 
 private:
 	FIntVector CurrentCenter;
-	UProceduralMeshComponent* Components[2][2][2];
+	UVoxelProceduralMeshComponent* Components[2][2][2];
 	TSet<FIntVector> ChunksToUpdate;
 };
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProceduralMeshComponent.h"
+#include "VoxelProceduralMeshComponent.h"
 #include "TransitionDirection.h"
 
 #define CHUNKSIZE_FC 18
@@ -15,7 +15,7 @@ class FVoxelPolygonizerForCollisions
 public:
 	FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition);
 
-	void CreateSection(FProcMeshSection& OutSection);
+	void CreateSection(FVoxelProcMeshSection& OutSection);
 
 private:
 	FVoxelData* const Data;

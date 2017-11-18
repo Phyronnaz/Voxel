@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelDataAsset.h"
 #include "VoxelWorldGenerator.h"
+#include "SubclassOf.h"
 #include "VoxelAssetWorldGenerator.generated.h"
 
 // TODO: UBoundedVoxelWorldGenerator
