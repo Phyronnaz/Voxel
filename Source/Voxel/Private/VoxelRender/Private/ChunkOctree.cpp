@@ -27,7 +27,7 @@ void FChunkOctree::Delete()
 	}
 }
 
-void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers)
+void FChunkOctree::UpdateLOD(const std::deque<TWeakObjectPtr<UVoxelInvokerComponent>>& Invokers)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
@@ -48,7 +48,8 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 	float MinDistance = MAX_flt;
 	for (auto Invoker : Invokers)
 	{
-		if (Invoker.IsValid() && !Invoker->IsForPhysicsOnly())
+		check(Invoker.IsValid());
+		if (!Invoker->IsForPhysicsOnly())
 		{
 			const float Distance = FMath::Max(0.f, (ChunkWorldPosition - Invoker->GetOwner()->GetActorLocation()).GetAbsMax() - Invoker->DistanceOffset - ChunkSide);
 			if (Distance < MinDistance)
@@ -76,7 +77,6 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 			// Update childs
 			for (int i = 0; i < 8; i++)
 			{
-				check(Childs[i].IsValid());
 				Childs[i]->UpdateLOD(Invokers);
 			}
 		}
@@ -102,7 +102,6 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 			// Update childs
 			for (int i = 0; i < 8; i++)
 			{
-				check(Childs[i].IsValid());
 				Childs[i]->UpdateLOD(Invokers);
 			}
 		}
@@ -123,7 +122,7 @@ void FChunkOctree::UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerCompo
 	}
 }
 
-TWeakPtr<FChunkOctree> FChunkOctree::GetLeaf(FIntVector PointPosition)
+FChunkOctree* FChunkOctree::GetLeaf(FIntVector PointPosition)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
@@ -132,9 +131,9 @@ TWeakPtr<FChunkOctree> FChunkOctree::GetLeaf(FIntVector PointPosition)
 
 	while (!Current->bHasChunk)
 	{
-		Current = Current->GetChild(PointPosition).Get();
+		Current = Current->GetChild(PointPosition);
 	}
-	return Current->AsShared();
+	return Current;
 }
 
 UVoxelChunkComponent* FChunkOctree::GetVoxelChunk() const
@@ -142,15 +141,14 @@ UVoxelChunkComponent* FChunkOctree::GetVoxelChunk() const
 	return VoxelChunk;
 }
 
-TSharedPtr<FChunkOctree> FChunkOctree::GetChild(FIntVector PointPosition)
+FChunkOctree* FChunkOctree::GetChild(FIntVector PointPosition)
 {
 	check(bHasChilds);
 	check(IsInOctree(PointPosition.X, PointPosition.Y, PointPosition.Z));
 
 	// Ex: Child 6 -> position (0, 1, 1) -> 0b011 == 6
-	TSharedPtr<FChunkOctree> Child = Childs[(PointPosition.X >= Position.X ? 1 : 0) + (PointPosition.Y >= Position.Y ? 2 : 0) + (PointPosition.Z >= Position.Z ? 4 : 0)];
+	FChunkOctree* Child = Childs[(PointPosition.X >= Position.X ? 1 : 0) + (PointPosition.Y >= Position.Y ? 2 : 0) + (PointPosition.Z >= Position.Z ? 4 : 0)];
 
-	check(Child.IsValid());
 	return Child;
 }
 
@@ -160,8 +158,8 @@ void FChunkOctree::Load()
 	check(!bHasChunk);
 
 	VoxelChunk = Render->GetInactiveChunk();
-	VoxelChunk->Init(AsShared());
-	Render->UpdateChunk(AsShared(), true);
+	VoxelChunk->Init(this);
+	Render->UpdateChunk(this, true);
 	bHasChunk = true;
 }
 
@@ -184,14 +182,14 @@ void FChunkOctree::CreateChilds()
 	int d = Size() / 4;
 	uint64 Pow = IntPow9(Depth - 1);
 
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow)));
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow)));
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow)));
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow)));
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow)));
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow)));
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow)));
-	Childs.Add(TSharedPtr<FChunkOctree>(new FChunkOctree(Render, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow)));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow));
+	Childs.Add(new FChunkOctree(Render, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow));
 
 	bHasChilds = true;
 }
@@ -201,40 +199,16 @@ void FChunkOctree::DeleteChilds()
 	check(bHasChilds);
 	check(Childs.Num() == 8);
 
-	for (TSharedPtr<FChunkOctree> Child : Childs)
+	for (FChunkOctree* Child : Childs)
 	{
 		Child->Delete();
-		Child.Reset();
+		delete Child;
 	}
 	Childs.Reset();
 	bHasChilds = false;
 }
 
-TWeakPtr<FChunkOctree> FChunkOctree::GetAdjacentChunk(TransitionDirection Direction)
-{
-	const int S = Size();
-	TArray<FIntVector> L = {
-		FIntVector(-S, 0, 0),
-		FIntVector(+S, 0, 0),
-		FIntVector(0, -S, 0),
-		FIntVector(0, +S, 0),
-		FIntVector(0, 0, -S),
-		FIntVector(0, 0, +S)
-	};
-
-	FIntVector P = Position + L[Direction];
-
-	if (Render->Data->IsInWorld(P.X, P.Y, P.Z))
-	{
-		return Render->GetChunkOctreeAt(P);
-	}
-	else
-	{
-		return TWeakPtr<FChunkOctree>(nullptr);
-	}
-}
-
-void FChunkOctree::GetLeafsOverlappingBox(FVoxelBox Box, std::forward_list<TWeakPtr<FChunkOctree>>& Octrees)
+void FChunkOctree::GetLeafsOverlappingBox(FVoxelBox Box, std::deque<FChunkOctree*>& Octrees)
 {
 	FVoxelBox OctreeBox(GetMinimalCornerPosition(), GetMaximalCornerPosition());
 
@@ -242,7 +216,7 @@ void FChunkOctree::GetLeafsOverlappingBox(FVoxelBox Box, std::forward_list<TWeak
 	{
 		if (IsLeaf())
 		{
-			Octrees.push_front(AsShared());
+			Octrees.push_front(this);
 		}
 		else
 		{

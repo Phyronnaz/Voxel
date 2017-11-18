@@ -217,12 +217,27 @@ FAsyncPolygonizerTask::FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxe
 	: Builder(InBuilder)
 	, Chunk(Chunk)
 {
+	DontDoCallback.Reset();
 }
 
-void FAsyncPolygonizerTask::DoWork()
+FAsyncPolygonizerTask::~FAsyncPolygonizerTask()
+{
+	delete Builder;
+}
+
+void FAsyncPolygonizerTask::DoThreadedWork()
 {
 	FVoxelProcMeshSection Section = FVoxelProcMeshSection();
 	Builder->CreateSection(Section);
 
-	Chunk->OnMeshComplete(Section);
+	if (DontDoCallback.GetValue() == 0)
+	{
+		Chunk->OnMeshComplete(Section, this);
+	}
+	delete this;
+}
+
+void FAsyncPolygonizerTask::Abandon()
+{
+	delete this;
 }

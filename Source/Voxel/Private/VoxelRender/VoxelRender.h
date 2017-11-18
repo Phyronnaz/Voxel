@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "VoxelBox.h"
-#include <list>
+#include "TransitionDirection.h"
+#include <deque>
 
 class AVoxelWorld;
 class FVoxelData;
@@ -12,6 +13,7 @@ class FChunkOctree;
 class UVoxelChunkComponent;
 class UVoxelProceduralMeshComponent;
 class FCollisionMeshHandler;
+class FAsyncPolygonizerTask;
 
 struct FChunkToDelete
 {
@@ -49,7 +51,7 @@ public:
 
 	UVoxelChunkComponent* GetInactiveChunk();
 
-	void UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync);
+	void UpdateChunk(FChunkOctree* Chunk, bool bAsync);
 	void UpdateChunksAtPosition(FIntVector Position, bool bAsync);
 	void UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync);
 	void ApplyUpdates();
@@ -70,7 +72,9 @@ public:
 	void ScheduleDeletion(UVoxelChunkComponent* Chunk);
 	void ChunkHasBeenDestroyed(UVoxelChunkComponent* Chunk);
 
-	TWeakPtr<FChunkOctree> GetChunkOctreeAt(FIntVector Position) const;
+	FChunkOctree* GetChunkOctreeAt(FIntVector Position) const;
+
+	FChunkOctree* GetAdjacentChunk(TransitionDirection Direction, FIntVector Position, int Size) const;
 
 	int GetDepthAt(FIntVector Position) const;
 
@@ -83,14 +87,14 @@ public:
 private:
 
 	// Chunks waiting for update
-	TSet<TWeakPtr<FChunkOctree>> ChunksToUpdate;
+	TSet<FChunkOctree*> ChunksToUpdate;
 	// Ids of the chunks that need to be updated synchronously
 	TSet<uint64> IdsOfChunksToUpdateSynchronously;
 
 	// Shared ptr because each ChunkOctree need a reference to itself, and the Main one isn't the child of anyone
 	TSharedPtr<FChunkOctree> MainOctree;
 
-	std::forward_list<UVoxelChunkComponent*> InactiveChunks;
+	std::deque<UVoxelChunkComponent*> InactiveChunks;
 	TSet<UVoxelChunkComponent*> ActiveChunks;
 
 	TSet<UVoxelChunkComponent*> FoliageUpdateNeeded;
@@ -103,10 +107,10 @@ private:
 	TSet<UVoxelChunkComponent*> ChunksToApplyNewFoliage;
 	FCriticalSection ChunksToApplyNewFoliageLock;
 
-	std::forward_list<FChunkToDelete> ChunksToDelete;
+	std::deque<FChunkToDelete> ChunksToDelete;
 
 	// Invokers
-	std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> VoxelInvokerComponents;
+	std::deque<TWeakObjectPtr<UVoxelInvokerComponent>> VoxelInvokerComponents;
 
 
 	TArray<FCollisionMeshHandler*> CollisionComponents;

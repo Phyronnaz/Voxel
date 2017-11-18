@@ -32,6 +32,7 @@ AVoxelWorld::AVoxelWorld()
 	, InstancedWorldGenerator(nullptr)
 	, VoxelWorldEditor(nullptr)
 	, bComputeCollisions(false)
+	, bComputeExtendedCollisions(true)
 	, bDebugCollisions(false)
 	, bEnableAmbientOcclusion(false)
 	, RayMaxDistance(5)
@@ -357,6 +358,11 @@ bool AVoxelWorld::GetComputeTransitions() const
 bool AVoxelWorld::GetComputeCollisions() const
 {
 	return bComputeCollisions;
+}
+
+bool AVoxelWorld::GetComputeExtendedCollisions()
+{
+	return bComputeExtendedCollisions;
 }
 
 bool AVoxelWorld::GetDebugCollisions() const

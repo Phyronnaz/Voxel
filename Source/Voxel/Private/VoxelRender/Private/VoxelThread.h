@@ -7,6 +7,7 @@
 #include "VoxelProceduralMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "IQueuedWork.h"
 
 class FVoxelPolygonizer;
 class UVoxelChunkComponent;
@@ -53,17 +54,17 @@ private:
 /**
  * Thread to create mesh
  */
-class FAsyncPolygonizerTask : public FNonAbandonableTask
+class FAsyncPolygonizerTask : public IQueuedWork
 {
 public:
-	FVoxelPolygonizer* Builder;
-	UVoxelChunkComponent* Chunk;
+	FVoxelPolygonizer* const Builder;
+	UVoxelChunkComponent* const Chunk;
+	FThreadSafeCounter DontDoCallback;
 
+	// Will delete Builder when done
 	FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxelChunkComponent* Chunk);
-	void DoWork();
+	~FAsyncPolygonizerTask();
 
-	FORCEINLINE TStatId GetStatId() const
-	{
-		RETURN_QUICK_DECLARE_CYCLE_STAT(FAsyncPolygonizerTask, STATGROUP_ThreadPoolAsyncTasks);
-	};
+	void DoThreadedWork() override;
+	void Abandon()  override;
 };

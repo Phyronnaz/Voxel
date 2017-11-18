@@ -7,6 +7,8 @@
 #include "VoxelProceduralMeshComponent.h"
 #include "VoxelPolygonizerForCollisions.h"
 #include "VoxelInvokerComponent.h"
+#include "VoxelThread.h"
+#include <algorithm>
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ UpdateLOD"), STAT_UpdateLOD, STATGROUP_Voxel);
@@ -373,7 +375,7 @@ void FVoxelRender::Tick(float DeltaTime)
 	}
 
 	// Chunks to delete
-	for (FChunkToDelete& ChunkToDelete : ChunksToDelete)
+	for (auto& ChunkToDelete : ChunksToDelete)
 	{
 		ChunkToDelete.TimeLeft -= DeltaTime;
 		if (ChunkToDelete.TimeLeft < 0)
@@ -387,7 +389,7 @@ void FVoxelRender::Tick(float DeltaTime)
 			InactiveChunks.push_front(Chunk);
 		}
 	}
-	ChunksToDelete.remove_if([](FChunkToDelete ChunkToDelete) { return ChunkToDelete.TimeLeft < 0; });
+	ChunksToDelete.erase(std::remove_if(ChunksToDelete.begin(), ChunksToDelete.end(), [](FChunkToDelete ChunkToDelete) { return ChunkToDelete.TimeLeft < 0; }), ChunksToDelete.end());
 }
 
 void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
@@ -395,7 +397,10 @@ void FVoxelRender::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 	if (Invoker.IsValid())
 	{
 		VoxelInvokerComponents.push_front(Invoker);
-		CollisionComponents.Add(new FCollisionMeshHandler(Invoker, World));
+		if (World->GetComputeCollisions())
+		{
+			CollisionComponents.Add(new FCollisionMeshHandler(Invoker, World));
+		}
 	}
 }
 
@@ -420,15 +425,12 @@ UVoxelChunkComponent* FVoxelRender::GetInactiveChunk()
 	return Chunk;
 }
 
-void FVoxelRender::UpdateChunk(TWeakPtr<FChunkOctree> Chunk, bool bAsync)
+void FVoxelRender::UpdateChunk(FChunkOctree* Chunk, bool bAsync)
 {
-	if (Chunk.IsValid())
+	ChunksToUpdate.Add(Chunk);
+	if (!bAsync)
 	{
-		ChunksToUpdate.Add(Chunk);
-		if (!bAsync)
-		{
-			IdsOfChunksToUpdateSynchronously.Add(Chunk.Pin().Get()->Id);
-		}
+		IdsOfChunksToUpdateSynchronously.Add(Chunk->Id);
 	}
 }
 
@@ -443,7 +445,7 @@ void FVoxelRender::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
 {
 	Box.Min -= FIntVector(2, 2, 2); // For normals
 	Box.Max += FIntVector(2, 2, 2); // For normals
-	std::forward_list<TWeakPtr<FChunkOctree>> OverlappingLeafs;
+	std::deque<FChunkOctree*> OverlappingLeafs;
 	MainOctree->GetLeafsOverlappingBox(Box, OverlappingLeafs);
 
 	for (auto Chunk : OverlappingLeafs)
@@ -472,22 +474,17 @@ void FVoxelRender::ApplyUpdates()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ApplyUpdates);
 
-	std::forward_list<TWeakPtr<FChunkOctree>> Failed;
-
 	for (auto& Chunk : ChunksToUpdate)
 	{
-		TSharedPtr<FChunkOctree> LockedChunk(Chunk.Pin());
+		check(Chunk->GetVoxelChunk());
 
-		if (LockedChunk.IsValid() && LockedChunk->GetVoxelChunk())
+		bool bAsync = !IdsOfChunksToUpdateSynchronously.Contains(Chunk->Id);
+		bool bSuccess = Chunk->GetVoxelChunk()->Update(bAsync);
+
+		/*if (!bSuccess)
 		{
-			bool bAsync = !IdsOfChunksToUpdateSynchronously.Contains(LockedChunk->Id);
-			bool bSuccess = LockedChunk->GetVoxelChunk()->Update(bAsync);
-
-			/*if (!bSuccess)
-			{
-				UE_LOG(VoxelLog, Warning, TEXT("Chunk already updating"));
-			}*/
-		}
+			UE_LOG(VoxelLog, Warning, TEXT("Chunk already updating"));
+		}*/
 	}
 	ChunksToUpdate.Reset();
 	IdsOfChunksToUpdateSynchronously.Reset();
@@ -506,15 +503,7 @@ void FVoxelRender::UpdateLOD()
 	SCOPE_CYCLE_COUNTER(STAT_UpdateLOD);
 
 	// Clean
-	std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Temp;
-	for (auto Invoker : VoxelInvokerComponents)
-	{
-		if (Invoker.IsValid())
-		{
-			Temp.push_front(Invoker);
-		}
-	}
-	VoxelInvokerComponents = Temp;
+	VoxelInvokerComponents.erase(std::remove_if(VoxelInvokerComponents.begin(), VoxelInvokerComponents.end(), [](TWeakObjectPtr<UVoxelInvokerComponent> Ptr) { return !Ptr.IsValid(); }), VoxelInvokerComponents.end());
 
 	for (auto& Handler : CollisionComponents)
 	{
@@ -558,9 +547,10 @@ void FVoxelRender::ChunkHasBeenDestroyed(UVoxelChunkComponent* Chunk)
 {
 	RemoveFromQueues(Chunk);
 
-	ChunksToDelete.remove_if([Chunk](FChunkToDelete ChunkToDelete) { return ChunkToDelete.Chunk == Chunk; });
+	ChunksToDelete.erase(std::remove_if(ChunksToDelete.begin(), ChunksToDelete.end(), [Chunk](FChunkToDelete ChunkToDelete) { return ChunkToDelete.Chunk == Chunk; }), ChunksToDelete.end());
 
-	InactiveChunks.remove(Chunk);
+	InactiveChunks.erase(std::remove(InactiveChunks.begin(), InactiveChunks.end(), Chunk), InactiveChunks.end());
+
 	ActiveChunks.Remove(Chunk);
 }
 
@@ -590,22 +580,43 @@ void FVoxelRender::RemoveFromQueues(UVoxelChunkComponent* Chunk)
 	}
 }
 
-TWeakPtr<FChunkOctree> FVoxelRender::GetChunkOctreeAt(FIntVector Position) const
+FChunkOctree* FVoxelRender::GetChunkOctreeAt(FIntVector Position) const
 {
 	check(Data->IsInWorld(Position.X, Position.Y, Position.Z));
 	return MainOctree->GetLeaf(Position);
 }
 
+FChunkOctree* FVoxelRender::GetAdjacentChunk(TransitionDirection Direction, FIntVector Position, int Size) const
+{
+	const int S = Size;
+	TArray<FIntVector> L = {
+		FIntVector(-S, 0, 0),
+		FIntVector(+S, 0, 0),
+		FIntVector(0, -S, 0),
+		FIntVector(0, +S, 0),
+		FIntVector(0, 0, -S),
+		FIntVector(0, 0, +S)
+	};
+
+	FIntVector P = Position + L[Direction];
+
+	if (Data->IsInWorld(P.X, P.Y, P.Z))
+	{
+		return GetChunkOctreeAt(P);
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
 int FVoxelRender::GetDepthAt(FIntVector Position) const
 {
-	return GetChunkOctreeAt(Position).Pin()->Depth;
+	return GetChunkOctreeAt(Position)->Depth;
 }
 
 void FVoxelRender::Destroy()
 {
-	MeshThreadPool->Destroy();
-	FoliageThreadPool->Destroy();
-
 	for (auto Chunk : ActiveChunks)
 	{
 		if (!Chunk->IsPendingKill())
@@ -617,6 +628,9 @@ void FVoxelRender::Destroy()
 			Chunk->ResetRender();
 		}
 	}
+
+	MeshThreadPool->Destroy();
+	FoliageThreadPool->Destroy();
 
 	ActiveChunks.Empty();
 	InactiveChunks.resize(0);

@@ -10,7 +10,7 @@ class UVoxelInvokerComponent;
 /**
  * Create the octree for rendering and spawn VoxelChunks
  */
-class FChunkOctree : public FOctree, public TSharedFromThis<FChunkOctree>
+class FChunkOctree : public FOctree
 {
 public:
 	FChunkOctree(FVoxelRender* Render, FIntVector Position, uint8 Depth, uint64 Id);
@@ -28,14 +28,14 @@ public:
 	 * @param	World			Current VoxelWorld
 	 * @param	Invokers		List of voxel invokers
 	 */
-	void UpdateLOD(std::forward_list<TWeakObjectPtr<UVoxelInvokerComponent>> Invokers);
+	void UpdateLOD(const std::deque<TWeakObjectPtr<UVoxelInvokerComponent>>& Invokers);
 
 	/**
-	 * Get a weak pointer to the leaf chunk at PointPosition. Weak pointers allow to check that the object they are pointing to is valid
+	 * Get the leaf chunk at PointPosition.
 	 * @param	PointPosition	Position in voxel space. Must be contained in this octree
-	 * @return	Weak pointer to leaf chunk at PointPosition
+	 * @return	Leaf chunk at PointPosition
 	 */
-	TWeakPtr<FChunkOctree> GetLeaf(FIntVector PointPosition);
+	FChunkOctree* GetLeaf(FIntVector PointPosition);
 
 	/**
 	 * Get the VoxelChunk of this
@@ -48,11 +48,9 @@ public:
 	* @param	PointPosition	Position in voxel space. Must be contained in this octree
 	* @return	Direct child in which PointPosition is contained
 	*/
-	TSharedPtr<FChunkOctree> GetChild(FIntVector PointPosition);
+	FChunkOctree* GetChild(FIntVector PointPosition);
 
-	TWeakPtr<FChunkOctree> GetAdjacentChunk(TransitionDirection Direction);
-
-	void GetLeafsOverlappingBox(FVoxelBox Box, std::forward_list<TWeakPtr<FChunkOctree>>& Octrees);
+	void GetLeafsOverlappingBox(FVoxelBox Box, std::deque<FChunkOctree*>& Octrees);
 
 private:
 	/*
@@ -64,7 +62,7 @@ private:
 	v 1 | 3    5 | 7
 	x
 	*/
-	TArray<TSharedPtr<FChunkOctree>, TFixedAllocator<8>> Childs;
+	TArray<FChunkOctree*, TFixedAllocator<8>> Childs;
 
 	// Is VoxelChunk created?
 	bool bHasChunk;

@@ -32,7 +32,7 @@ public:
 	 * @param	NewDepth		Width = 16 * 2^Depth
 	 * @param	NewWorld		VoxelWorld
 	 */
-	void Init(TWeakPtr<FChunkOctree> NewOctree);
+	void Init(FChunkOctree* NewOctree);
 
 	/**
 	 * Update this for terrain changes
@@ -61,7 +61,7 @@ public:
 	/**
 	* Copy Task section to PrimaryMesh section
 	*/
-	void OnMeshComplete(FVoxelProcMeshSection& InSection);
+	void OnMeshComplete(FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask);
 
 	void ApplyNewMesh();
 
@@ -85,13 +85,16 @@ private:
 	TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes;
 
 	// Async process tasks
-	FAsyncTask<FAsyncPolygonizerTask>* MeshBuilder;
+	FAsyncPolygonizerTask* MeshBuilder;
+	FCriticalSection MeshBuilderLock;
 	TArray<FAsyncTask<FAsyncFoliageTask>*> FoliageTasks;
 
-	FVoxelPolygonizer* Builder;
-
-	TSharedPtr<FChunkOctree> CurrentOctree;
+	FChunkOctree* CurrentOctree;
 	FVoxelRender* Render;
+
+	// For when CurrentOctree is deleted
+	FIntVector Position;
+	int Size;
 
 	FThreadSafeCounter CompletedFoliageTaskCount;
 
@@ -99,5 +102,5 @@ private:
 
 	void DeleteTasks();
 
-	void CreateBuilder();
+	FVoxelPolygonizer* CreatePolygonizer();
 };

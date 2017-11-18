@@ -22,7 +22,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 UVoxelChunkComponent::UVoxelChunkComponent()
 	: Render(nullptr)
 	, MeshBuilder(nullptr)
-	, Builder(nullptr)
+	, CurrentOctree(nullptr)
 {
 	bCastShadowAsTwoSided = true;
 	bUseAsyncCooking = true;
@@ -40,16 +40,16 @@ UVoxelChunkComponent::~UVoxelChunkComponent()
 	DeleteTasks();
 }
 
-void UVoxelChunkComponent::Init(TWeakPtr<FChunkOctree> NewOctree)
+void UVoxelChunkComponent::Init(FChunkOctree* NewOctree)
 {
 	check(!Render);
 	check(!MeshBuilder);
-	check(!Builder);
-	check(!CurrentOctree.IsValid());
-	check(NewOctree.IsValid());
+	check(!CurrentOctree);
 
-	CurrentOctree = NewOctree.Pin();
+	CurrentOctree = NewOctree;
 	Render = CurrentOctree->Render;
+	Position = CurrentOctree->Position;
+	Size = CurrentOctree->Size();
 
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
 
@@ -69,15 +69,15 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 	SCOPE_CYCLE_COUNTER(STAT_Update);
 
 	// Update ChunkHasHigherRes
-	if (CurrentOctree->Depth != 0)
+	if (Render->World->GetComputeTransitions() && CurrentOctree->Depth != 0)
 	{
 		for (int i = 0; i < 6; i++)
 		{
 			TransitionDirection Direction = (TransitionDirection)i;
-			TWeakPtr<FChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
-			if (Chunk.IsValid())
+			FChunkOctree* Chunk = Render->GetAdjacentChunk(Direction, Position, Size);
+			if (Chunk)
 			{
-				ChunkHasHigherRes[i] = Chunk.Pin()->Depth < CurrentOctree->Depth;
+				ChunkHasHigherRes[i] = Chunk->Depth < CurrentOctree->Depth;
 			}
 			else
 			{
@@ -89,11 +89,11 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 
 	if (bAsync)
 	{
+		FScopeLock Lock(&MeshBuilderLock);
 		if (!MeshBuilder)
 		{
-			CreateBuilder();
-			MeshBuilder = new FAsyncTask<FAsyncPolygonizerTask>(Builder, this);
-			MeshBuilder->StartBackgroundTask(Render->MeshThreadPool);
+			MeshBuilder = new FAsyncPolygonizerTask(CreatePolygonizer(), this);
+			Render->MeshThreadPool->AddQueuedWork(MeshBuilder);
 
 			return true;
 		}
@@ -104,22 +104,18 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 	}
 	else
 	{
-		if (MeshBuilder)
 		{
-			MeshBuilder->EnsureCompletion();
-			delete MeshBuilder;
-			MeshBuilder = nullptr;
-		}
-		if (Builder)
-		{
-			delete Builder;
-			Builder = nullptr;
+			FScopeLock Lock(&MeshBuilderLock);
+			if (MeshBuilder)
+			{
+				MeshBuilder->DontDoCallback.Increment();
+				MeshBuilder = nullptr;
+			}
 		}
 
-		CreateBuilder();
+		FVoxelPolygonizer* Builder = CreatePolygonizer();
 		Builder->CreateSection(Section);
 		delete Builder;
-		Builder = nullptr;
 
 		ApplyNewMesh();
 
@@ -129,23 +125,23 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 
 void UVoxelChunkComponent::CheckTransitions()
 {
+	// Cannot use CurrentOctree here
+
 	check(Render);
 
 	if (Render->World->GetComputeTransitions())
 	{
-		const int Depth = Render->GetDepthAt(CurrentOctree->Position);
+		const int Depth = Render->GetDepthAt(Position);
 		for (int i = 0; i < 6; i++)
 		{
 			auto Direction = (TransitionDirection)i;
-			TWeakPtr<FChunkOctree> Chunk = CurrentOctree->GetAdjacentChunk(Direction);
-			if (Chunk.IsValid())
+			FChunkOctree* Chunk = Render->GetAdjacentChunk(Direction, Position, Size);
+			if (Chunk)
 			{
-				TSharedPtr<FChunkOctree> ChunkPtr = Chunk.Pin();
+				bool bThisHasHigherRes = Chunk->Depth > Depth;
 
-				bool bThisHasHigherRes = ChunkPtr->Depth > Depth;
-
-				check(ChunkPtr->GetVoxelChunk());
-				if (bThisHasHigherRes != ChunkPtr->GetVoxelChunk()->HasChunkHigherRes(InvertTransitionDirection(Direction)))
+				check(Chunk->GetVoxelChunk());
+				if (bThisHasHigherRes != Chunk->GetVoxelChunk()->HasChunkHigherRes(InvertTransitionDirection(Direction)))
 				{
 					Render->UpdateChunk(Chunk, true);
 				}
@@ -162,6 +158,8 @@ void UVoxelChunkComponent::Unload()
 
 	Render->AddTransitionCheck(this); // Needed because octree is only partially updated when Unload is called
 	Render->ScheduleDeletion(this);
+
+	CurrentOctree = nullptr;
 }
 
 void UVoxelChunkComponent::Delete()
@@ -181,38 +179,33 @@ void UVoxelChunkComponent::Delete()
 		FoliageComponent->DestroyComponent();
 	}
 	FoliageComponents.Empty();
-
-	// Reset octree ptr
-	CurrentOctree.Reset();
 }
 
-void UVoxelChunkComponent::OnMeshComplete(FVoxelProcMeshSection& InSection)
+void UVoxelChunkComponent::OnMeshComplete(FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask)
 {
-	check(Render);
-	check(MeshBuilder);
+	if (Render)
+	{
+		FScopeLock Lock(&MeshBuilderLock);
+		if (MeshBuilder == InTask)
+		{
+			MeshBuilder = nullptr;
 
-	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
+			Section = InSection;
 
-	Section = InSection;
-
-	Render->AddApplyNewMesh(this);
+			Render->AddApplyNewMesh(this);
+		}
+		else
+		{
+			UE_LOG(VoxelLog, Warning, TEXT("Invalid FAsyncPolygonizerTask"));
+		}
+	}
 }
 
 void UVoxelChunkComponent::ApplyNewMesh()
 {
-	check(Render);
+	SCOPE_CYCLE_COUNTER(STAT_SetProcMeshSection);
 
-	if (MeshBuilder)
-	{
-		MeshBuilder->EnsureCompletion();
-		delete MeshBuilder;
-		MeshBuilder = nullptr;
-	}
-	if (Builder)
-	{
-		delete Builder;
-		Builder = nullptr;
-	}
+	check(Render);
 
 	Render->AddFoliageUpdate(this);
 
@@ -228,8 +221,6 @@ void UVoxelChunkComponent::SetVoxelMaterial(UMaterialInterface* Material)
 
 bool UVoxelChunkComponent::HasChunkHigherRes(TransitionDirection Direction)
 {
-	check(CurrentOctree.IsValid());
-
 	return CurrentOctree->Depth != 0 && ChunkHasHigherRes[Direction];
 }
 
@@ -384,20 +375,20 @@ void UVoxelChunkComponent::Serialize(FArchive& Ar)
 
 void UVoxelChunkComponent::DeleteTasks()
 {
-	if (MeshBuilder)
 	{
-		if (!MeshBuilder->Cancel())
+		FScopeLock Lock(&MeshBuilderLock);
+		if (MeshBuilder)
 		{
-			MeshBuilder->EnsureCompletion();
+			if (Render && Render->MeshThreadPool->RetractQueuedWork(MeshBuilder))
+			{
+				delete MeshBuilder;
+			}
+			else
+			{
+				MeshBuilder->DontDoCallback.Increment();
+			}
+			MeshBuilder = nullptr;
 		}
-		check(MeshBuilder->IsDone());
-		delete MeshBuilder;
-		MeshBuilder = nullptr;
-	}
-	if (Builder)
-	{
-		delete Builder;
-		Builder = nullptr;
 	}
 	for (auto FoliageTask : FoliageTasks)
 	{
@@ -412,18 +403,17 @@ void UVoxelChunkComponent::DeleteTasks()
 	CompletedFoliageTaskCount.Reset();
 }
 
-void UVoxelChunkComponent::CreateBuilder()
+FVoxelPolygonizer* UVoxelChunkComponent::CreatePolygonizer()
 {
 	check(Render);
-	check(!Builder);
 
-	Builder = new FVoxelPolygonizer(
+	return new FVoxelPolygonizer(
 		CurrentOctree->Depth,
 		Render->Data,
 		CurrentOctree->GetMinimalCornerPosition(),
 		ChunkHasHigherRes,
 		CurrentOctree->Depth != 0 && Render->World->GetComputeTransitions(),
-		CurrentOctree->Depth == 0 && Render->World->GetComputeCollisions(),
+		CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions(),
 		Render->World->GetEnableAmbientOcclusion(),
 		Render->World->GetRayMaxDistance(),
 		Render->World->GetRayCount()

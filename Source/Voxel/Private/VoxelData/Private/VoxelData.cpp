@@ -97,7 +97,7 @@ void FVoxelData::TestWorldGenerator()
 						float CachedValue = CachedValues[Index];
 						FVoxelMaterial CachedMaterial = CachedMaterials[Index];
 
-						checkf(Value == CachedValue, TEXT("Invalid world generator! Values returned are not coherent for different Step"));
+						checkf(FMath::Abs(Value - CachedValue) < KINDA_SMALL_NUMBER, TEXT("Invalid world generator! Values returned are not coherent for different Step"));
 						checkf(Material == CachedMaterial, TEXT("Invalid world generator! Materials returned are not coherent for different Step"));
 					}
 				}

@@ -60,6 +60,7 @@ public:
 	FORCEINLINE UMaterialInterface* GetVoxelMaterial() const;
 	FORCEINLINE bool GetComputeTransitions() const;
 	FORCEINLINE bool GetComputeCollisions() const;
+	FORCEINLINE bool GetComputeExtendedCollisions();
 	FORCEINLINE bool GetDebugCollisions() const;
 	FORCEINLINE float GetDeletionDelay() const;
 	FORCEINLINE bool GetEnableAmbientOcclusion() const;
@@ -213,6 +214,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		bool bComputeTransitions;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		bool bComputeExtendedCollisions;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		bool bDebugCollisions;
