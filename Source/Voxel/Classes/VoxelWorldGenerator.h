@@ -18,11 +18,24 @@ class VOXEL_API UVoxelWorldGenerator : public UObject
 
 public:
 
+	float GetValue(int X, int Y, int Z)
+	{
+		float Values[1];
+		GetValuesAndMaterials(Values, nullptr, FIntVector(X, Y, Z), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
+		return Values[0];
+	}
+	FVoxelMaterial GetMaterial(int X, int Y, int Z)
+	{
+		FVoxelMaterial Materials[1];
+		GetValuesAndMaterials(nullptr, Materials, FIntVector(X, Y, Z), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
+		return Materials[0];
+	}
+
 	/**
 	 * Values or Materials can be null
 	 * Start.X <= X < Step * Size.X
 	 * Start % Step == 0
-	 * 
+	 *
 	 * @param	Values		Values. Can be nullptr
 	 * @param	Materials	Materials. Can be nullptr
 	 * @param	Start		Start of the processed chunk in voxel position

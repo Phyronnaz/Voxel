@@ -67,31 +67,39 @@ void FVoxelData::Reset()
 	MainOctree = new FValueOctree(WorldGenerator, FIntVector::ZeroValue, Depth, FOctree::GetTopIdFromDepth(Depth), bMultiplayer);
 }
 
-void FVoxelData::TestWorldGenerator(FIntVector Position, FIntVector InSize)
+void FVoxelData::TestWorldGenerator()
 {
 	BeginGet();
+
+	FIntVector InSize(25, 25, 25);
+	TArray<FIntVector> Positions = { FIntVector::ZeroValue, FIntVector(2 * 3 * 4 * 5 * 6 * 7 * 8 * 9) };
+
 	float* CachedValues = new float[InSize.X * InSize.Y * InSize.Z];
 	FVoxelMaterial* CachedMaterials = new FVoxelMaterial[InSize.X * InSize.Y * InSize.Z];
-	for (int Step = 1; Step < 3; Step++)
+
+	for (auto Position : Positions)
 	{
-		GetValuesAndMaterials(CachedValues, CachedMaterials, Position, FIntVector::ZeroValue, Step, InSize, InSize);
-
-		for (int X = 0; X < InSize.X; X++)
+		for (int Step = 1; Step < 10; Step++)
 		{
-			for (int Y = 0; Y < InSize.Y; Y++)
+			GetValuesAndMaterials(CachedValues, CachedMaterials, Position, FIntVector::ZeroValue, Step, InSize, InSize);
+
+			for (int X = 0; X < InSize.X; X++)
 			{
-				for (int Z = 0; Z < InSize.Z; Z++)
+				for (int Y = 0; Y < InSize.Y; Y++)
 				{
-					float Value;
-					FVoxelMaterial Material;
-					GetValueAndMaterial(Position.X + X * Step, Position.Y + Y * Step, Position.Z + Z * Step, Value, Material);
+					for (int Z = 0; Z < InSize.Z; Z++)
+					{
+						float Value;
+						FVoxelMaterial Material;
+						GetValueAndMaterial(Position.X + X * Step, Position.Y + Y * Step, Position.Z + Z * Step, Value, Material);
 
-					const int Index = X + InSize.X * Y + InSize.X * InSize.Y * Z;
-					float CachedValue = CachedValues[Index];
-					FVoxelMaterial CachedMaterial = CachedMaterials[Index];
+						const int Index = X + InSize.X * Y + InSize.X * InSize.Y * Z;
+						float CachedValue = CachedValues[Index];
+						FVoxelMaterial CachedMaterial = CachedMaterials[Index];
 
-					checkf(Value == CachedValue, TEXT("Invalid world generator! Values returned are not coherent for different Step"));
-					checkf(Material == CachedMaterial, TEXT("Invalid world generator! Materials returned are not coherent for different Step"));
+						checkf(Value == CachedValue, TEXT("Invalid world generator! Values returned are not coherent for different Step"));
+						checkf(Material == CachedMaterial, TEXT("Invalid world generator! Materials returned are not coherent for different Step"));
+					}
 				}
 			}
 		}
@@ -127,9 +135,7 @@ void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[
 						}
 						else
 						{
-							float CValues[1];
-							WorldGenerator->GetValuesAndMaterials(CValues, nullptr, FIntVector(RX, RY, RZ), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
-							Values[Index] = CValues[0];
+							Values[Index] = WorldGenerator->GetValue(RX, RY, RZ);
 						}
 					}
 					if (Materials)
@@ -140,9 +146,7 @@ void FVoxelData::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[
 						}
 						else
 						{
-							FVoxelMaterial CMaterials[1];
-							WorldGenerator->GetValuesAndMaterials(nullptr, CMaterials, FIntVector(RX, RY, RZ), FIntVector::ZeroValue, 1, FIntVector(1, 1, 1), FIntVector(1, 1, 1));
-							Materials[Index] = CMaterials[0];
+							Materials[Index] = WorldGenerator->GetMaterial(RX, RY, RZ);
 						}
 					}
 				}

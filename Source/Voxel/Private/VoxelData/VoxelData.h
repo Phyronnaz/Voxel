@@ -41,7 +41,7 @@ public:
 
 	void Reset();
 
-	void TestWorldGenerator(FIntVector Position, FIntVector Size);
+	void TestWorldGenerator();
 
 	/**
 	* Get value and color at position

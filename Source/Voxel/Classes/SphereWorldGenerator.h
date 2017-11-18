@@ -15,13 +15,13 @@ class VOXEL_API USphereWorldGenerator : public UVoxelWorldGenerator
 	GENERATED_BODY()
 
 public:
-	/*USphereWorldGenerator();
+	USphereWorldGenerator();
 
-	virtual float GetDefaultValue(int X, int Y, int Z) override;
-	virtual FVoxelMaterial GetDefaultMaterial(int X, int Y, int Z) override;
+	virtual void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const override;
+
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
-	virtual FVector GetUpVector(int X, int Y, int Z) override;
-*/
+	virtual FVector GetUpVector(int X, int Y, int Z) const override;
+
 	// Radius of the sphere in world space
 	UPROPERTY(EditAnywhere)
 		float Radius;
@@ -34,7 +34,7 @@ public:
 		bool InverseOutsideInside;
 
 	UPROPERTY(EditAnywhere)
-		float ValueMultiplier;
+		float HardnessMultiplier;
 
 private:
 	float LocalRadius;

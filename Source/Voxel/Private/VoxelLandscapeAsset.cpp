@@ -1,6 +1,5 @@
 // Copyright 2017 Phyronnaz
 
-#pragma once
 #include "VoxelLandscapeAsset.h"
 #include "LandscapeComponent.h"
 #include "VoxelPrivatePCH.h"
@@ -118,8 +117,8 @@ FVoxelBox FDecompressedVoxelLandscapeAsset::GetBounds()
 	FIntVector Bound(HalfSize, HalfSize, HalfSize);
 
 	FVoxelBox Box;
-	Box.Min = Bound * -1;
-	Box.Max = Bound - FIntVector(1, 1, 1);
+	Box.Min = FIntVector(-HalfSize, -HalfSize, -Precision);
+	Box.Max = FIntVector(HalfSize - 1, HalfSize - 1, Precision + 256);
 
 	return Box;
 }
