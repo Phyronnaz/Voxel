@@ -315,7 +315,7 @@ private:
 		auto& Component = Components[bXMax][bYMax][bZMax];
 
 		check(!Task);
-		Task = new FAsyncTask<FAsyncCollisionTask>(World->GetData(), ChunkPosition, World->GetComputeCollisions());
+		Task = new FAsyncTask<FAsyncCollisionTask>(World->GetData(), ChunkPosition, World->GetDebugCollisions());
 		Task->StartBackgroundTask();
 	}
 
