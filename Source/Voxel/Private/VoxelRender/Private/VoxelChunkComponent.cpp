@@ -179,6 +179,8 @@ void UVoxelChunkComponent::Delete()
 		FoliageComponent->DestroyComponent();
 	}
 	FoliageComponents.Empty();
+
+	CurrentOctree = nullptr;
 }
 
 void UVoxelChunkComponent::OnMeshComplete(FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask)
