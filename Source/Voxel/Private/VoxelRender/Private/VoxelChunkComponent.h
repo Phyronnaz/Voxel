@@ -71,6 +71,8 @@ public:
 
 	void ResetRender();
 
+	FVoxelPolygonizer* CreatePolygonizer(FAsyncPolygonizerTask* Task = nullptr);
+
 protected:
 	void Serialize(FArchive& Ar) override;
 
@@ -101,6 +103,4 @@ private:
 	void OnAllFoliageComplete();
 
 	void DeleteTasks();
-
-	FVoxelPolygonizer* CreatePolygonizer();
 };

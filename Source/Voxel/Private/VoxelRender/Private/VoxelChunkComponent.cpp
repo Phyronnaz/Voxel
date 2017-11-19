@@ -14,9 +14,14 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "VoxelPolygonizer.h"
+#include "Components/PrimitiveComponent.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update ~ Update neighbors"), STAT_UpdateUpdateNeighbors, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update ~ Async"), STAT_UpdateAsync, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update ~ Sync"), STAT_UpdateSync, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Check for transitions"), STAT_CheckTransitions, STATGROUP_Voxel);
 
 // Sets default values
 UVoxelChunkComponent::UVoxelChunkComponent()
@@ -51,6 +56,16 @@ void UVoxelChunkComponent::Init(FChunkOctree* NewOctree)
 	Position = CurrentOctree->Position;
 	Size = CurrentOctree->Size();
 
+	bCookCollisions = CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions();
+	if (bCookCollisions)
+	{
+		SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	else
+	{
+		SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
 
 	SetWorldLocation(Render->GetGlobalPosition(NewPosition));
@@ -71,6 +86,7 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 	// Update ChunkHasHigherRes
 	if (Render->World->GetComputeTransitions() && CurrentOctree->Depth != 0)
 	{
+		SCOPE_CYCLE_COUNTER(STAT_UpdateUpdateNeighbors);
 		for (int i = 0; i < 6; i++)
 		{
 			TransitionDirection Direction = (TransitionDirection)i;
@@ -89,10 +105,11 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 
 	if (bAsync)
 	{
+		SCOPE_CYCLE_COUNTER(STAT_UpdateAsync);
 		FScopeLock Lock(&MeshBuilderLock);
 		if (!MeshBuilder)
 		{
-			MeshBuilder = new FAsyncPolygonizerTask(CreatePolygonizer(), this);
+			MeshBuilder = new FAsyncPolygonizerTask(this);
 			Render->MeshThreadPool->AddQueuedWork(MeshBuilder);
 
 			return true;
@@ -104,6 +121,7 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 	}
 	else
 	{
+		SCOPE_CYCLE_COUNTER(STAT_UpdateSync);
 		{
 			FScopeLock Lock(&MeshBuilderLock);
 			if (MeshBuilder)
@@ -125,6 +143,7 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 
 void UVoxelChunkComponent::CheckTransitions()
 {
+	SCOPE_CYCLE_COUNTER(STAT_CheckTransitions);
 	// Cannot use CurrentOctree here
 
 	check(Render);
@@ -187,11 +206,17 @@ void UVoxelChunkComponent::OnMeshComplete(FVoxelProcMeshSection& InSection, FAsy
 {
 	if (Render)
 	{
-		FScopeLock Lock(&MeshBuilderLock);
-		if (MeshBuilder == InTask)
+		bool bSame;
 		{
-			MeshBuilder = nullptr;
-
+			FScopeLock Lock(&MeshBuilderLock);
+			bSame = (MeshBuilder == InTask);
+		}
+		if (bSame)
+		{
+			{
+				FScopeLock Lock(&MeshBuilderLock);
+				MeshBuilder = nullptr;
+			}
 			Section = InSection;
 
 			Render->AddApplyNewMesh(this);
@@ -405,19 +430,26 @@ void UVoxelChunkComponent::DeleteTasks()
 	CompletedFoliageTaskCount.Reset();
 }
 
-FVoxelPolygonizer* UVoxelChunkComponent::CreatePolygonizer()
+FVoxelPolygonizer* UVoxelChunkComponent::CreatePolygonizer(FAsyncPolygonizerTask* Task)
 {
-	check(Render);
+	FScopeLock Lock(&MeshBuilderLock);
 
-	return new FVoxelPolygonizer(
-		CurrentOctree->Depth,
-		Render->Data,
-		CurrentOctree->GetMinimalCornerPosition(),
-		ChunkHasHigherRes,
-		CurrentOctree->Depth != 0 && Render->World->GetComputeTransitions(),
-		CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions(),
-		Render->World->GetEnableAmbientOcclusion(),
-		Render->World->GetRayMaxDistance(),
-		Render->World->GetRayCount()
-	);
+	if (Render && CurrentOctree && (!Task || (MeshBuilder && Task == MeshBuilder)))
+	{
+		return new FVoxelPolygonizer(
+			CurrentOctree->Depth,
+			Render->Data,
+			CurrentOctree->GetMinimalCornerPosition(),
+			ChunkHasHigherRes,
+			CurrentOctree->Depth != 0 && Render->World->GetComputeTransitions(),
+			CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions(),
+			Render->World->GetEnableAmbientOcclusion(),
+			Render->World->GetRayMaxDistance(),
+			Render->World->GetRayCount()
+		);
+	}
+	else
+	{
+		return nullptr;
+	}
 }

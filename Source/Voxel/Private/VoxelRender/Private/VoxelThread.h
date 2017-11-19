@@ -57,12 +57,11 @@ private:
 class FAsyncPolygonizerTask : public IQueuedWork
 {
 public:
-	FVoxelPolygonizer* const Builder;
 	UVoxelChunkComponent* const Chunk;
 	FThreadSafeCounter DontDoCallback;
 
 	// Will delete Builder when done
-	FAsyncPolygonizerTask(FVoxelPolygonizer* InBuilder, UVoxelChunkComponent* Chunk);
+	FAsyncPolygonizerTask(UVoxelChunkComponent* Chunk);
 	~FAsyncPolygonizerTask();
 
 	void DoThreadedWork() override;

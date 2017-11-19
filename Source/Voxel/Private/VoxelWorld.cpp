@@ -21,6 +21,7 @@ AVoxelWorld::AVoxelWorld()
 	, bIsCreated(false)
 	, FoliageFPS(15)
 	, LODUpdateFPS(10)
+	, CollisionUpdateFPS(30)
 	, NewVoxelSize(100)
 	, Seed(100)
 	, MeshThreadCount(4)
@@ -343,6 +344,11 @@ float AVoxelWorld::GetFoliageFPS() const
 float AVoxelWorld::GetLODUpdateFPS() const
 {
 	return LODUpdateFPS;
+}
+
+float AVoxelWorld::GetCollisionUpdateFPS() const
+{
+	return CollisionUpdateFPS;
 }
 
 UMaterialInterface* AVoxelWorld::GetVoxelMaterial() const

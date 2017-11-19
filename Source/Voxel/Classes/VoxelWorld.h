@@ -57,6 +57,7 @@ public:
 	FORCEINLINE int32 GetSeed() const;
 	FORCEINLINE float GetFoliageFPS() const;
 	FORCEINLINE float GetLODUpdateFPS() const;
+	FORCEINLINE float GetCollisionUpdateFPS() const;
 	FORCEINLINE UMaterialInterface* GetVoxelMaterial() const;
 	FORCEINLINE bool GetComputeTransitions() const;
 	FORCEINLINE bool GetComputeCollisions() const;
@@ -226,6 +227,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		float LODUpdateFPS;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		float CollisionUpdateFPS;
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"), AdvancedDisplay)
 		int MeshThreadCount;

@@ -20,6 +20,9 @@ public:
 	UPROPERTY(EditAnywhere)
 		int Radius;
 
+	UPROPERTY(EditAnywhere)
+		bool InverseInsideOutside;
+
 	USphericalPerlinNoiseWorldGenerator();
 
 	virtual void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const override;

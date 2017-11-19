@@ -565,6 +565,7 @@ UVoxelProceduralMeshComponent::UVoxelProceduralMeshComponent(const FObjectInitia
 	: Super(ObjectInitializer)
 {
 	bUseComplexAsSimpleCollision = true;
+	bCookCollisions = true;
 }
 
 void UVoxelProceduralMeshComponent::PostLoad()
@@ -575,212 +576,6 @@ void UVoxelProceduralMeshComponent::PostLoad()
 	{
 		ProcMeshBodySetup->SetFlags(RF_Public);
 	}
-}
-
-void UVoxelProceduralMeshComponent::CreateMeshSection_LinearColor(int32 SectionIndex, const TArray<FVector>& Vertices, const TArray<int32>& Triangles, const TArray<FVector>& Normals, const TArray<FVector2D>& UV0, const TArray<FLinearColor>& VertexColors, const TArray<FVoxelProcMeshTangent>& Tangents, bool bCreateCollision)
-{
-	// Convert FLinearColors to FColors
-	TArray<FColor> Colors;
-	if (VertexColors.Num() > 0)
-	{
-		Colors.SetNum(VertexColors.Num());
-
-		for (int32 ColorIdx = 0; ColorIdx < VertexColors.Num(); ColorIdx++)
-		{
-			Colors[ColorIdx] = VertexColors[ColorIdx].ToFColor(false);
-		}
-	}
-
-	CreateMeshSection(SectionIndex, Vertices, Triangles, Normals, UV0, Colors, Tangents, bCreateCollision);
-}
-
-void UVoxelProceduralMeshComponent::CreateMeshSection(int32 SectionIndex, const TArray<FVector>& Vertices, const TArray<int32>& Triangles, const TArray<FVector>& Normals, const TArray<FVector2D>& UV0, const TArray<FColor>& VertexColors, const TArray<FVoxelProcMeshTangent>& Tangents, bool bCreateCollision)
-{
-	SCOPE_CYCLE_COUNTER(STAT_ProcMesh_CreateMeshSection);
-
-	// Ensure sections array is long enough
-	if (SectionIndex >= ProcMeshSections.Num())
-	{
-		ProcMeshSections.SetNum(SectionIndex + 1, false);
-	}
-
-	// Reset this section (in case it already existed)
-	FVoxelProcMeshSection& NewSection = ProcMeshSections[SectionIndex];
-	NewSection.Reset();
-
-	// Copy data to vertex buffer
-	const int32 NumVerts = Vertices.Num();
-	NewSection.ProcVertexBuffer.Reset();
-	NewSection.ProcVertexBuffer.AddUninitialized(NumVerts);
-	for (int32 VertIdx = 0; VertIdx < NumVerts; VertIdx++)
-	{
-		FVoxelProcMeshVertex& Vertex = NewSection.ProcVertexBuffer[VertIdx];
-
-		Vertex.Position = Vertices[VertIdx];
-		Vertex.Normal = (Normals.Num() == NumVerts) ? Normals[VertIdx] : FVector(0.f, 0.f, 1.f);
-		Vertex.UV0 = (UV0.Num() == NumVerts) ? UV0[VertIdx] : FVector2D(0.f, 0.f);
-		Vertex.Color = (VertexColors.Num() == NumVerts) ? VertexColors[VertIdx] : FColor(255, 255, 255);
-		Vertex.Tangent = (Tangents.Num() == NumVerts) ? Tangents[VertIdx] : FVoxelProcMeshTangent();
-
-		// Update bounding box
-		NewSection.SectionLocalBox += Vertex.Position;
-	}
-
-	// Copy index buffer (clamping to vertex range)
-	int32 NumTriIndices = Triangles.Num();
-	NumTriIndices = (NumTriIndices / 3) * 3; // Ensure we have exact number of triangles (array is multiple of 3 long)
-
-	NewSection.ProcIndexBuffer.Reset();
-	NewSection.ProcIndexBuffer.AddUninitialized(NumTriIndices);
-	for (int32 IndexIdx = 0; IndexIdx < NumTriIndices; IndexIdx++)
-	{
-		NewSection.ProcIndexBuffer[IndexIdx] = FMath::Min(Triangles[IndexIdx], NumVerts - 1);
-	}
-
-	NewSection.bEnableCollision = bCreateCollision;
-
-	UpdateLocalBounds(); // Update overall bounds
-	UpdateCollision(); // Mark collision as dirty
-	MarkRenderStateDirty(); // New section requires recreating scene proxy
-}
-
-void UVoxelProceduralMeshComponent::UpdateMeshSection_LinearColor(int32 SectionIndex, const TArray<FVector>& Vertices, const TArray<FVector>& Normals, const TArray<FVector2D>& UV0, const TArray<FLinearColor>& VertexColors, const TArray<FVoxelProcMeshTangent>& Tangents)
-{
-	// Convert FLinearColors to FColors
-	TArray<FColor> Colors;
-	if (VertexColors.Num() > 0)
-	{
-		Colors.SetNum(VertexColors.Num());
-
-		for (int32 ColorIdx = 0; ColorIdx < VertexColors.Num(); ColorIdx++)
-		{
-			Colors[ColorIdx] = VertexColors[ColorIdx].ToFColor(true);
-		}
-	}
-
-	UpdateMeshSection(SectionIndex, Vertices, Normals, UV0, Colors, Tangents);
-}
-
-void UVoxelProceduralMeshComponent::UpdateMeshSection(int32 SectionIndex, const TArray<FVector>& Vertices, const TArray<FVector>& Normals, const TArray<FVector2D>& UV0, const TArray<FColor>& VertexColors, const TArray<FVoxelProcMeshTangent>& Tangents)
-{
-	SCOPE_CYCLE_COUNTER(STAT_ProcMesh_UpdateSectionGT);
-
-	if (SectionIndex < ProcMeshSections.Num())
-	{
-		FVoxelProcMeshSection& Section = ProcMeshSections[SectionIndex];
-		const int32 NumVerts = Section.ProcVertexBuffer.Num();
-
-		// See if positions are changing
-		const bool bPositionsChanging = (Vertices.Num() == NumVerts);
-
-		// Update bounds, if we are getting new position data
-		if (bPositionsChanging)
-		{
-			Section.SectionLocalBox.Init();
-		}
-
-		// Iterate through vertex data, copying in new info
-		for (int32 VertIdx = 0; VertIdx < NumVerts; VertIdx++)
-		{
-			FVoxelProcMeshVertex& ModifyVert = Section.ProcVertexBuffer[VertIdx];
-
-			// Position data
-			if (Vertices.Num() == NumVerts)
-			{
-				ModifyVert.Position = Vertices[VertIdx];
-				Section.SectionLocalBox += ModifyVert.Position;
-			}
-
-			// Normal data
-			if (Normals.Num() == NumVerts)
-			{
-				ModifyVert.Normal = Normals[VertIdx];
-			}
-
-			// Tangent data 
-			if (Tangents.Num() == NumVerts)
-			{
-				ModifyVert.Tangent = Tangents[VertIdx];
-			}
-
-			// UV data
-			if (UV0.Num() == NumVerts)
-			{
-				ModifyVert.UV0 = UV0[VertIdx];
-			}
-
-			// Color data
-			if (VertexColors.Num() == NumVerts)
-			{
-				ModifyVert.Color = VertexColors[VertIdx];
-			}
-		}
-
-		if (SceneProxy)
-		{
-			// Create data to update section
-			FProcMeshSectionUpdateData* SectionData = new FProcMeshSectionUpdateData;
-			SectionData->TargetSection = SectionIndex;
-			SectionData->NewVertexBuffer = Section.ProcVertexBuffer;
-
-			// Enqueue command to send to render thread
-			ENQUEUE_UNIQUE_RENDER_COMMAND_TWOPARAMETER(
-				FProcMeshSectionUpdate,
-				FProceduralMeshSceneProxy*, ProcMeshSceneProxy, (FProceduralMeshSceneProxy*)SceneProxy,
-				FProcMeshSectionUpdateData*, SectionData, SectionData,
-				{
-					ProcMeshSceneProxy->UpdateSection_RenderThread(SectionData);
-				}
-			);
-		}
-
-		// If we have collision enabled on this section, update that too
-		if (bPositionsChanging && Section.bEnableCollision)
-		{
-			TArray<FVector> CollisionPositions;
-
-			// We have one collision mesh for all sections, so need to build array of _all_ positions
-			for (const FVoxelProcMeshSection& CollisionSection : ProcMeshSections)
-			{
-				// If section has collision, copy it
-				if (CollisionSection.bEnableCollision)
-				{
-					for (int32 VertIdx = 0; VertIdx < CollisionSection.ProcVertexBuffer.Num(); VertIdx++)
-					{
-						CollisionPositions.Add(CollisionSection.ProcVertexBuffer[VertIdx].Position);
-					}
-				}
-			}
-
-			// Pass new positions to trimesh
-			BodyInstance.UpdateTriMeshVertices(CollisionPositions);
-		}
-
-		if (bPositionsChanging)
-		{
-			UpdateLocalBounds(); // Update overall bounds
-			MarkRenderTransformDirty(); // Need to send new bounds to render thread
-		}
-	}
-}
-
-void UVoxelProceduralMeshComponent::ClearMeshSection(int32 SectionIndex)
-{
-	if (SectionIndex < ProcMeshSections.Num())
-	{
-		ProcMeshSections[SectionIndex].Reset();
-		UpdateLocalBounds();
-		UpdateCollision();
-		MarkRenderStateDirty();
-	}
-}
-
-void UVoxelProceduralMeshComponent::ClearAllMeshSections()
-{
-	ProcMeshSections.Empty();
-	UpdateLocalBounds();
-	UpdateCollision();
-	MarkRenderStateDirty();
 }
 
 void UVoxelProceduralMeshComponent::SetMeshSectionVisible(int32 SectionIndex, bool bNewVisibility)
@@ -1021,6 +816,12 @@ void UVoxelProceduralMeshComponent::CreateProcMeshBodySetup()
 void UVoxelProceduralMeshComponent::UpdateCollision()
 {
 	SCOPE_CYCLE_COUNTER(STAT_ProcMesh_UpdateCollision);
+
+	if (!bCookCollisions)
+	{
+		return;
+	}
+
 
 	UWorld* World = GetWorld();
 	const bool bUseAsyncCook = World && World->IsGameWorld() && bUseAsyncCooking;

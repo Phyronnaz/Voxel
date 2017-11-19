@@ -6,6 +6,7 @@
 #include "VoxelBox.h"
 #include "TransitionDirection.h"
 #include <deque>
+#include "VoxelProceduralMeshComponent.h"
 
 class AVoxelWorld;
 class FVoxelData;
@@ -24,6 +25,26 @@ struct FChunkToDelete
 		: Chunk(Chunk)
 		, TimeLeft(TimeLeft)
 	{
+	};
+};
+
+class FAsyncCollisionTask : public FNonAbandonableTask
+{
+public:
+	// Output
+	FVoxelProcMeshSection Section;
+
+	const bool bEnableRender;
+	const FIntVector ChunkPosition;
+	FVoxelData* const Data;
+
+	FAsyncCollisionTask(FVoxelData* Data, FIntVector ChunkPosition, bool bEnableRender);
+
+	void DoWork();
+
+	FORCEINLINE TStatId GetStatId() const
+	{
+		RETURN_QUICK_DECLARE_CYCLE_STAT(FAsyncFoliageTask, STATGROUP_ThreadPoolAsyncTasks);
 	};
 };
 
@@ -118,6 +139,8 @@ private:
 
 	float TimeSinceFoliageUpdate;
 	float TimeSinceLODUpdate;
+	float TimeSinceCollisionUpdate;
+	bool bNeedToEndCollisionsTasks;
 
 	void RemoveFromQueues(UVoxelChunkComponent* Chunk);
 };

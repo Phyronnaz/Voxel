@@ -56,19 +56,21 @@ void USphericalPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], 
 					const float NX = X * Radius / R;
 					const float NY = Y * Radius / R;
 
+					const float Sign = InverseInsideOutside ? -1 : 1;
+
 					float Density = Height;
 
 					{
 						float x = NX;
 						float y = NY;
 
-						Density -= FMath::Clamp<float>(10000 * Noise.GetSimplexFractal(x / 1000, y / 1000), 1000, 10000) - 1000;
+						Density -= Sign * (FMath::Clamp<float>(10000 * Noise.GetSimplexFractal(x / 1000, y / 1000), 1000, 10000) - 1000);
 
-						Density -= FMath::Clamp<float>(250 * Noise.GetSimplexFractal(x / 100, y / 100), 0, 250);
+						Density -= Sign * FMath::Clamp<float>(250 * Noise.GetSimplexFractal(x / 100, y / 100), 0, 250);
 					}
 
-					const float A = FMath::Lerp(0.25f, 2.f, FMath::Clamp(Z - 5.f, 0.f, 1.f));
-					const float B = FMath::Lerp(0.f, 5.f, FMath::Clamp((5.f - Z) / 4.f, 0.f, 1.f));
+					const float A = FMath::Lerp(0.25f, 2.f, FMath::Clamp(Height - 5.f, 0.f, 1.f));
+					const float B = FMath::Lerp(0.f, 5.f, FMath::Clamp((5.f - Height) / 4.f, 0.f, 1.f));
 
 					if (Density + A + B > -2 || Density - A - B < 2)
 					{
@@ -79,7 +81,7 @@ void USphericalPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], 
 
 							Noise.GradientPerturb(x, y, z);
 
-							ALayerValue = A * Noise.GetSimplexFractal(x, y, z);
+							ALayerValue = Sign * A * Noise.GetSimplexFractal(x, y, z);
 
 							Density -= ALayerValue;
 						}
@@ -87,7 +89,7 @@ void USphericalPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], 
 						{
 							float x = NX;
 							float y = NY;
-							Density += B * FMath::Clamp(Noise.GetSimplex(x, y), 0.f, 1.f);
+							Density += Sign * B * FMath::Clamp(Noise.GetSimplex(x, y), 0.f, 1.f);
 						}
 					}
 
@@ -97,34 +99,35 @@ void USphericalPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], 
 				const int Index = (StartIndex.X + I) + ArraySize.X * (StartIndex.Y + J) + ArraySize.X * ArraySize.Y * (StartIndex.Z + K);
 				if (Values)
 				{
-					Values[Index] = Value;
+					Values[Index] = Value * (InverseInsideOutside ? -1 : 1);
 				}
 				if (Materials)
 				{
+					const int NewHeight = (Height / Step) * Step;
 					FVoxelMaterial Material;
-					if (Height < -10)
+					if (NewHeight < -10)
 					{
 						Material = FVoxelMaterial(0, 0, 0);
 					}
-					else if (Height < 10)
+					else if (NewHeight < 10)
 					{
-						Material = FVoxelMaterial(0, 1, FMath::Clamp<int>(Height * 256.f / 10.f, 0, 255));
+						Material = FVoxelMaterial(0, 1, FMath::Clamp<int>(NewHeight * 256.f / 10.f, 0, 255));
 					}
-					else if (Height < 11)
+					else if (NewHeight < 11)
 					{
 						Material = FVoxelMaterial(1, 1, 255);
 					}
-					else if (Height < 12)
+					else if (NewHeight < 12)
 					{
 						Material = FVoxelMaterial(1, 2, 0);
 					}
-					else if (Height < 1000)
+					else if (NewHeight < 1000)
 					{
 						Material = FVoxelMaterial(1, 2, FMath::Clamp<int>(-ALayerValue * 256.f, 0, 255));
 					}
-					else if (Height < 1500)
+					else if (NewHeight < 1500)
 					{
-						Material = FVoxelMaterial(1, 3, FMath::Clamp<int>((Height - 1000.f) * 256.f / 500.f, 0, 255));
+						Material = FVoxelMaterial(1, 3, FMath::Clamp<int>((NewHeight - 1000.f) * 256.f / 500.f, 0, 255));
 					}
 					else
 					{
