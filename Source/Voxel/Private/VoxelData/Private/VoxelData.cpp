@@ -97,7 +97,7 @@ void FVoxelData::TestWorldGenerator()
 						float CachedValue = CachedValues[Index];
 						FVoxelMaterial CachedMaterial = CachedMaterials[Index];
 
-						checkf(FMath::Abs(Value - CachedValue) < KINDA_SMALL_NUMBER, TEXT("Invalid world generator! Values returned are not coherent for different Step"));
+						checkf(FMath::Abs(Value - CachedValue) < 0.1f, TEXT("Invalid world generator! Values returned are not coherent for different Step"));
 						checkf(Material == CachedMaterial, TEXT("Invalid world generator! Materials returned are not coherent for different Step"));
 					}
 				}
@@ -260,12 +260,12 @@ void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std:
 	EndSet();
 }
 
-void FVoxelData::GetDiffLists(std::forward_list<FVoxelValueDiff>& OutValueDiffList, std::forward_list<FVoxelMaterialDiff>& OutMaterialDiffList) const
+void FVoxelData::GetDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutMaterialDiffList) const
 {
 	MainOctree->AddChunksToDiffLists(OutValueDiffList, OutMaterialDiffList);
 }
 
-void FVoxelData::LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FVoxelValueDiff> ValueDiffList, std::forward_list<FVoxelMaterialDiff> MaterialDiffList, std::forward_list<FIntVector>& OutModifiedPositions)
+void FVoxelData::LoadFromDiffListsAndGetModifiedPositions(std::deque<FVoxelValueDiff> ValueDiffList, std::deque<FVoxelMaterialDiff> MaterialDiffList, std::deque<FIntVector>& OutModifiedPositions)
 {
 	BeginSet();
 	MainOctree->LoadFromDiffListsAndGetModifiedPositions(ValueDiffList, MaterialDiffList, OutModifiedPositions);

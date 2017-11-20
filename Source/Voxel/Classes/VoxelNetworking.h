@@ -3,18 +3,9 @@
 #include "CoreMinimal.h"
 #include "Networking.h"
 #include "Engine.h"
+#include <deque>
 
-class FVoxelTcpConnection
-{
-public:
-	FSocket* const Socket;
-
-	FVoxelTcpConnection(FSocket* const Socket);
-	~FVoxelTcpConnection();
-
-	bool SendData(TArray<uint8> Data);
-	void ReceiveData(TArray<uint8>& OutData);
-};
+#define PACKET_SIZE_IN_DIFF 250
 
 class FVoxelTcpClient
 {
@@ -24,13 +15,17 @@ public:
 
 	void ConnectTcpClient(const FString& Ip, const int32 Port);
 
-	void ReceiveData(TArray<uint8>& OutData);
+	void ReceiveData(std::deque<FVoxelValueDiff>& OutValueDiffs, std::deque<FVoxelMaterialDiff>& OutMaterialDiffs);
 
 	bool IsValid();
 
 private:
-	FVoxelTcpConnection* Connection;
+	FSocket* Socket;
 
+	bool bExpectedSizeUpToDate;
+	uint32 ExpectedSize;
+
+	void UpdateExpectedSize();
 };
 
 class FVoxelTcpServer
@@ -43,11 +38,15 @@ public:
 
 	bool Accept(FSocket* NewSocket, const FIPv4Endpoint& Endpoint);
 
-	bool SendData(TArray<uint8> Data);
-
 	bool IsValid();
+
+	void SendValueDiffs(std::deque<FVoxelValueDiff>& Diffs);
+	void SendMaterialDiffs(std::deque<FVoxelMaterialDiff>& Diffs);
 
 private:
 	FTcpListener* TcpListener;
-	TArray<FVoxelTcpConnection*> Connections;
+	TArray<FSocket*> Sockets;
+
+	template<typename T>
+	void SendData(std::deque<T>& DiffList, bool bIsValues);
 };

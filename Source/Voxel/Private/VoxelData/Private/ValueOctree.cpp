@@ -490,7 +490,7 @@ void FValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave
 	}
 }
 
-void FValueOctree::AddChunksToDiffLists(std::forward_list<FVoxelValueDiff>& OutValueDiffList, std::forward_list<FVoxelMaterialDiff>& OutColorDiffList)
+void FValueOctree::AddChunksToDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutColorDiffList)
 {
 	if (IsLeaf())
 	{
@@ -520,7 +520,7 @@ void FValueOctree::AddChunksToDiffLists(std::forward_list<FVoxelValueDiff>& OutV
 	}
 }
 
-void FValueOctree::LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& MaterialsDiffs, std::forward_list<FIntVector>& OutModifiedPositions)
+void FValueOctree::LoadFromDiffListsAndGetModifiedPositions(std::deque<FVoxelValueDiff>& ValuesDiffs, std::deque<FVoxelMaterialDiff>& MaterialsDiffs, std::deque<FIntVector>& OutModifiedPositions)
 {
 	if (ValuesDiffs.empty() && MaterialsDiffs.empty())
 	{

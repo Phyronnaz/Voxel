@@ -420,12 +420,10 @@ void FVoxelRender::Tick(float DeltaTime)
 				if (!bNeedToEndCollisionsTasks)
 				{
 					Handler->StartTasksTick();
-					bNeedToEndCollisionsTasks = true;
 				}
 				else
 				{
 					Handler->EndTasksTick();
-					bNeedToEndCollisionsTasks = false;
 				}
 			}
 			else
@@ -435,6 +433,7 @@ void FVoxelRender::Tick(float DeltaTime)
 				Handler = nullptr;
 			}
 		}
+		bNeedToEndCollisionsTasks = !bNeedToEndCollisionsTasks;
 		CollisionComponents.RemoveAll([](void* P) { return P == nullptr; });
 	}
 

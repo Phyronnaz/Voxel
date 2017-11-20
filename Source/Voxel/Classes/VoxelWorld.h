@@ -270,5 +270,6 @@ private:
 	void CreateWorld();
 	void DestroyWorld();
 
-	void Sync();
+	void ReceiveData();
+	void SendData();
 };

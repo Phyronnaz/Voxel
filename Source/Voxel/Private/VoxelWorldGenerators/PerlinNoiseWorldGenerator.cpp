@@ -60,7 +60,7 @@ void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMat
 	}
 	else
 	{
-		float* NoiseValuesSimplexFractalScale1000 = NoiseSIMD->GetSimplexFractalSet(Start.X / Step, Start.Y / Step, Start.Z / Step, Size.X, Size.Y, Size.Z, Step / 1000.f);
+		float* NoiseValuesSimplexFractalScale1000 = NoiseSIMD->GetSimplexFractalSet(Start.X / Step, Start.Y / Step, Start.Z / Step, Size.X, Size.Y, Size.Z, Step / 25.f);
 		float* NoiseValuesSimplexFractalScale100 = NoiseSIMD->GetSimplexFractalSet(Start.X / Step, Start.Y / Step, Start.Z / Step, Size.X, Size.Y, Size.Z, Step / 100.f);
 
 		for (int K = 0; K < Size.Z; K++)

@@ -62,14 +62,14 @@ public:
 	 * @param	ValuesDiffs		Values diff array; sorted by increasing Id
 	 * @param	ColorsDiffs		Colors diff array; sorted by increasing Id
 	 */
-	void AddChunksToDiffLists(std::forward_list<FVoxelValueDiff>& OutValueDiffList, std::forward_list<FVoxelMaterialDiff>& OutColorDiffList);
+	void AddChunksToDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutColorDiffList);
 	/**
 	 * Load values that have changed since last network sync from diff arrays
 	 * @param	ValuesDiffs		Values diff array; top is lowest Id
 	 * @param	ColorsDiffs		Colors diff array; top is lowest Id
 	 * @param	World			Voxel world
 	 */
-	void LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FVoxelValueDiff>& ValuesDiffs, std::forward_list<FVoxelMaterialDiff>& ColorsDiffs, std::forward_list<FIntVector>& OutModifiedPositions);
+	void LoadFromDiffListsAndGetModifiedPositions(std::deque<FVoxelValueDiff>& ValuesDiffs, std::deque<FVoxelMaterialDiff>& ColorsDiffs, std::deque<FIntVector>& OutModifiedPositions);
 
 	/**
 	* Get direct child that owns GlobalPosition

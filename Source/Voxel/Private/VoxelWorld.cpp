@@ -85,13 +85,20 @@ void AVoxelWorld::Tick(float DeltaTime)
 		Render->Tick(DeltaTime);
 	}
 
-	if (bMultiplayer && (TcpClient.IsValid() || TcpServer.IsValid()))
+	if (bMultiplayer)
 	{
-		TimeSinceSync += DeltaTime;
-		if (TimeSinceSync > 1.f / MultiplayerSyncRate)
+		if (TcpClient.IsValid())
 		{
-			TimeSinceSync = 0;
-			Sync();
+			ReceiveData();
+		}
+		else if (TcpServer.IsValid())
+		{
+			TimeSinceSync += DeltaTime;
+			if (TimeSinceSync > 1.f / MultiplayerSyncRate)
+			{
+				TimeSinceSync = 0;
+				SendData();
+			}
 		}
 	}
 }
@@ -223,96 +230,58 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 
 void AVoxelWorld::StartServer(const FString& Ip, const int32 Port)
 {
-	TcpServer.StartTcpServer(Ip, Port);
+	if (TcpClient.IsValid())
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Cannot start server: client already running"));
+	}
+	else
+	{
+		TcpServer.StartTcpServer(Ip, Port);
+	}
 }
 
 void AVoxelWorld::ConnectClient(const FString& Ip, const int32 Port)
 {
-	TcpClient.ConnectTcpClient(Ip, Port);
-}
-
-void AVoxelWorld::Sync()
-{
 	if (TcpServer.IsValid())
 	{
-		FBufferArchive ToBinary;
-
-		std::forward_list<FVoxelValueDiff> ValueDiffList;
-		std::forward_list<FVoxelMaterialDiff> MaterialDiffList;
-		Data->GetDiffLists(ValueDiffList, MaterialDiffList);
-
-		int ValueDiffCount = 0;
-		int MaterialDiffCount = 0;
-		for (auto ValueDiff : ValueDiffList)
-		{
-			ValueDiffCount++;
-		}
-		for (auto MaterialDiff : MaterialDiffList)
-		{
-			MaterialDiffCount++;
-		}
-
-		ToBinary << ValueDiffCount;
-		ToBinary << MaterialDiffCount;
-		for (auto ValueDiff : ValueDiffList)
-		{
-			ToBinary << ValueDiff;
-		}
-		for (auto MaterialDiff : MaterialDiffList)
-		{
-			ToBinary << MaterialDiff;
-		}
-
-		bool bSuccess = TcpServer.SendData(ToBinary);
-		if (!bSuccess)
-		{
-			UE_LOG(LogTemp, Error, TEXT("SendData failed"));
-		}
-	}
-	else if (TcpClient.IsValid())
-	{
-		TArray<uint8> BinaryData;
-		TcpClient.ReceiveData(BinaryData);
-
-		if (BinaryData.Num())
-		{
-			FMemoryReader FromBinary(BinaryData);
-			FromBinary.Seek(0);
-
-			std::forward_list<FVoxelValueDiff> ValueDiffList;
-			std::forward_list<FVoxelMaterialDiff> MaterialDiffList;
-
-			int ValueDiffCount = 0;
-			int MaterialDiffCount = 0;
-			FromBinary << ValueDiffCount;
-			FromBinary << MaterialDiffCount;
-
-			for (int i = 0; i < ValueDiffCount; i++)
-			{
-				FVoxelValueDiff ValueDiff;
-				FromBinary << ValueDiff;
-				ValueDiffList.push_front(ValueDiff);
-			}
-			for (int i = 0; i < MaterialDiffCount; i++)
-			{
-				FVoxelMaterialDiff MaterialDiff;
-				FromBinary << MaterialDiff;
-				MaterialDiffList.push_front(MaterialDiff);
-			}
-
-			std::forward_list<FIntVector> ModifiedPositions;
-			Data->LoadFromDiffListsAndGetModifiedPositions(ValueDiffList, MaterialDiffList, ModifiedPositions);
-
-			for (auto Position : ModifiedPositions)
-			{
-				UpdateChunksAtPosition(Position, true);
-				DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 1.1f / MultiplayerSyncRate);
-			}
-		}
+		UE_LOG(VoxelLog, Error, TEXT("Cannot connect client: server already running"));
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("No valid TCPSender/TCPListener"));
+		TcpClient.ConnectTcpClient(Ip, Port);
+	}
+}
+
+void AVoxelWorld::ReceiveData()
+{
+	if (TcpClient.IsValid())
+	{
+		std::deque<FIntVector> ModifiedPositions;
+		std::deque<FVoxelValueDiff> ValueDiffs;
+		std::deque<FVoxelMaterialDiff> MaterialDiffs;
+
+		TcpClient.ReceiveData(ValueDiffs, MaterialDiffs);
+
+		Data->LoadFromDiffListsAndGetModifiedPositions(ValueDiffs, MaterialDiffs, ModifiedPositions);
+
+		for (auto Position : ModifiedPositions)
+		{
+			UpdateChunksAtPosition(Position, true);
+			DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 1.1f / MultiplayerSyncRate);
+		}
+	}
+}
+
+void AVoxelWorld::SendData()
+{
+	if (TcpServer.IsValid())
+	{
+		std::deque<FVoxelValueDiff> ValueDiffs;
+		std::deque<FVoxelMaterialDiff> MaterialDiffs;
+		Data->GetDiffLists(ValueDiffs, MaterialDiffs);
+
+		TcpServer.SendValueDiffs(ValueDiffs);
+		TcpServer.SendMaterialDiffs(MaterialDiffs);
 	}
 }
 

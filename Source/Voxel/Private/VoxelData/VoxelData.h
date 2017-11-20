@@ -101,7 +101,7 @@ public:
 	 * @param	OutValueDiffPacketsList		Each packet is sorted by Id
 	 * @param	OutColorDiffPacketsList		Each packet is sorted by Id
 	 */
-	void GetDiffLists(std::forward_list<FVoxelValueDiff>& OutValueDiffList, std::forward_list<FVoxelMaterialDiff>& OutMaterialDiffList) const;
+	void GetDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutMaterialDiffList) const;
 
 	/**
 	 * Load values and colors from diff arrays, and queue update of chunks that have changed
@@ -109,7 +109,7 @@ public:
 	 * @param	ColorDiffArray	First element has lowest Id
 	 * @param	World			Voxel world
 	 */
-	void LoadFromDiffListsAndGetModifiedPositions(std::forward_list<FVoxelValueDiff> ValueDiffList, std::forward_list<FVoxelMaterialDiff> MaterialDiffList, std::forward_list<FIntVector>& OutModifiedPositions);
+	void LoadFromDiffListsAndGetModifiedPositions(std::deque<FVoxelValueDiff> ValueDiffList, std::deque<FVoxelMaterialDiff> MaterialDiffList, std::deque<FIntVector>& OutModifiedPositions);
 
 private:
 	FValueOctree* MainOctree;

@@ -1,65 +1,22 @@
 #include "VoxelNetworking.h"
 #include "VoxelPrivatePCH.h"
 
-
-FVoxelTcpConnection::FVoxelTcpConnection(FSocket* const Socket)
-	: Socket(Socket)
-{
-	check(Socket);
-}
-
-FVoxelTcpConnection::~FVoxelTcpConnection()
-{
-	ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(Socket);
-}
-
-bool FVoxelTcpConnection::SendData(TArray<uint8> Data)
-{
-	int32 BytesSent = 0;
-	FArrayWriter Writer;
-
-	Writer << Data;
-
-	bool bSuccess = Socket->Send(Writer.GetData(), Writer.Num(), BytesSent);
-
-	//UE_LOG(LogTemp, Log, TEXT("Bytes sent: %d. Success: %d"), BytesSent, bSuccess);
-
-
-	return bSuccess;
-}
-
-void FVoxelTcpConnection::ReceiveData(TArray<uint8>& OutData)
-{
-	uint32 PendingDataSize = 0;
-	while (Socket->HasPendingData(PendingDataSize))
-	{
-		FArrayReader ReceivedData = FArrayReader(true);
-		ReceivedData.Init(0, FMath::Min(PendingDataSize, 65507u));
-
-		int32 BytesRead = 0;
-		Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead);
-
-		ReceivedData << OutData;
-
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%d bytes received"), BytesRead));
-	}
-}
-
-
-
-
+DECLARE_CYCLE_STAT(TEXT("VoxelNetworking ~ Receive data"), STAT_ReceiveData, STATGROUP_Voxel);
+DECLARE_CYCLE_STAT(TEXT("VoxelNetworking ~ Send data"), STAT_SendData, STATGROUP_Voxel);
 
 FVoxelTcpClient::FVoxelTcpClient()
-	: Connection(nullptr)
+	: Socket(nullptr)
+	, ExpectedSize(0)
+	, bExpectedSizeUpToDate(false)
 {
 
 }
 
 FVoxelTcpClient::~FVoxelTcpClient()
 {
-	if (Connection)
+	if (Socket)
 	{
-		delete Connection;
+		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(Socket);
 	}
 }
 
@@ -80,7 +37,18 @@ void FVoxelTcpClient::ConnectTcpClient(const FString& Ip, const int32 Port)
 
 	FIPv4Endpoint Endpoint(RemoteAddr);
 
-	FSocket* Socket = FTcpSocketBuilder(TEXT("RemoteConnection"));
+	if (Socket)
+	{
+		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(Socket);
+	}
+
+	Socket = FTcpSocketBuilder(TEXT("RemoteConnection"));
+
+	int BufferSize = 1000000;
+	int NewSize;
+	Socket->SetReceiveBufferSize(BufferSize, NewSize);
+	check(BufferSize == NewSize);
+
 	if (Socket)
 	{
 		if (!Socket->Connect(*Endpoint.ToInternetAddr()))
@@ -89,22 +57,74 @@ void FVoxelTcpClient::ConnectTcpClient(const FString& Ip, const int32 Port)
 			Socket = nullptr;
 			return;
 		}
-		else
-		{
-			if (Connection)
-			{
-				delete Connection;
-			}
-			Connection = new FVoxelTcpConnection(Socket);
-		}
 	}
 }
 
-void FVoxelTcpClient::ReceiveData(TArray<uint8>& OutData)
+void FVoxelTcpClient::ReceiveData(std::deque<FVoxelValueDiff>& OutValueDiffs, std::deque<FVoxelMaterialDiff>& OutMaterialDiffs)
 {
-	if (Connection)
+	SCOPE_CYCLE_COUNTER(STAT_ReceiveData);
+
+	if (Socket)
 	{
-		Connection->ReceiveData(OutData);
+		if (!bExpectedSizeUpToDate)
+		{
+			UpdateExpectedSize();
+		}
+		if (bExpectedSizeUpToDate)
+		{
+
+			uint32 PendingDataSize = 0;
+			if (Socket->HasPendingData(PendingDataSize))
+			{
+				if (PendingDataSize >= ExpectedSize)
+				{
+					TArray<uint8> ReceivedData;
+					ReceivedData.SetNumUninitialized(ExpectedSize);
+
+					int32 BytesRead = 0;
+					Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead);
+					check(BytesRead == ExpectedSize);
+
+					FArchiveLoadCompressedProxy Decompressor = FArchiveLoadCompressedProxy(ReceivedData, ECompressionFlags::COMPRESS_ZLIB);
+					check(!Decompressor.GetError());
+
+					//Decompress
+					FBufferArchive DecompressedDataArray;
+					Decompressor << DecompressedDataArray;
+
+					FMemoryReader DecompressedData = FMemoryReader(DecompressedDataArray);
+
+					bool bValues;
+					uint32 ItemCount;
+					DecompressedData << bValues;
+					DecompressedData << ItemCount;
+
+					check(ItemCount <= PACKET_SIZE_IN_DIFF);
+
+					if (bValues)
+					{
+						for (uint32 i = 0; i < ItemCount; i++)
+						{
+							FVoxelValueDiff Diff;
+							DecompressedData << Diff;
+							OutValueDiffs.push_front(Diff);
+						}
+					}
+					else
+					{
+						for (uint32 i = 0; i < ItemCount; i++)
+						{
+							FVoxelMaterialDiff Diff;
+							DecompressedData << Diff;
+							OutMaterialDiffs.push_front(Diff);
+						}
+					}
+
+					bExpectedSizeUpToDate = false;
+					UpdateExpectedSize();
+				}
+			}
+		}
 	}
 	else
 	{
@@ -114,7 +134,29 @@ void FVoxelTcpClient::ReceiveData(TArray<uint8>& OutData)
 
 bool FVoxelTcpClient::IsValid()
 {
-	return Connection!=nullptr;
+	return Socket != nullptr;
+}
+
+void FVoxelTcpClient::UpdateExpectedSize()
+{
+	check(!bExpectedSizeUpToDate);
+
+	uint32 PendingDataSize = 0;
+	if (Socket->HasPendingData(PendingDataSize))
+	{
+		if (PendingDataSize >= 4)
+		{
+			uint8 ReceivedData[4];
+
+			int BytesRead;
+			Socket->Recv(ReceivedData, 4, BytesRead);
+			check(BytesRead == 4);
+
+			ExpectedSize = ReceivedData[0] + 256 * (ReceivedData[1] + 256 * (ReceivedData[2] + 256 * ReceivedData[3]));
+
+			bExpectedSizeUpToDate = true;
+		}
+	}
 }
 
 
@@ -129,9 +171,9 @@ FVoxelTcpServer::FVoxelTcpServer()
 
 FVoxelTcpServer::~FVoxelTcpServer()
 {
-	for (auto Connection : Connections)
+	for (auto Socket : Sockets)
 	{
-		delete Connection;
+		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(Socket);
 	}
 	delete TcpListener;
 }
@@ -155,23 +197,86 @@ void FVoxelTcpServer::StartTcpServer(const FString& Ip, const int32 Port)
 
 bool FVoxelTcpServer::Accept(FSocket* NewSocket, const FIPv4Endpoint& Endpoint)
 {
-	Connections.Add(new FVoxelTcpConnection(NewSocket));
+	Sockets.Add(NewSocket);
+
+	int BufferSize = 1000000;
+	int NewSize;
+	NewSocket->SetSendBufferSize(BufferSize, NewSize);
+	check(BufferSize == NewSize);
+
 
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Connected!"));
 	return true;
 }
 
-bool FVoxelTcpServer::SendData(TArray<uint8> Data)
-{
-	bool bSuccess = true;
-	for (auto Socket : Connections)
-	{
-		bSuccess = bSuccess && Socket->SendData(Data);
-	}
-	return bSuccess;
-}
-
 bool FVoxelTcpServer::IsValid()
 {
-	return Connections.Num()>0;
+	return Sockets.Num() > 0;
+}
+
+void FVoxelTcpServer::SendValueDiffs(std::deque<FVoxelValueDiff>& Diffs)
+{
+	SendData(Diffs, true);
+}
+
+void FVoxelTcpServer::SendMaterialDiffs(std::deque<FVoxelMaterialDiff>& Diffs)
+{
+	SendData(Diffs, false);
+}
+
+template<typename T>
+void FVoxelTcpServer::SendData(std::deque<T>& DiffList, bool bIsValues)
+{
+	SCOPE_CYCLE_COUNTER(STAT_SendData);
+
+	int i = 0;
+	while (i < DiffList.size())
+	{
+		uint32 SizeToSend = FMath::Min(PACKET_SIZE_IN_DIFF, (int)DiffList.size() - i);
+
+		FBufferArchive Writer;
+		Writer << bIsValues;
+		Writer << SizeToSend;
+
+		for (uint32 k = 0; k < SizeToSend; k++)
+		{
+			Writer << DiffList[i];
+			i++;
+		}
+
+		TArray<uint8> DataToSend;
+		FArchiveSaveCompressedProxy Compressor = FArchiveSaveCompressedProxy(DataToSend, ECompressionFlags::COMPRESS_ZLIB);
+		// Send entire binary array/archive to compressor
+		Compressor << Writer;
+		// Send archive serialized data to binary array
+		Compressor.Flush();
+
+		for (auto Socket : Sockets)
+		{
+			// Send
+			int32 BytesSent = 0;
+
+			uint8 Data[4];
+
+			uint32 Tmp = DataToSend.Num();
+			Data[0] = Tmp % 256;
+			Tmp /= 256;
+			Data[1] = Tmp % 256;
+			Tmp /= 256;
+			Data[2] = Tmp % 256;
+			Tmp /= 256;
+			Data[3] = Tmp % 256;
+
+			Socket->Send(Data, 4, BytesSent);
+			if (BytesSent != 4)
+			{
+				UE_LOG(LogTemp, Error, TEXT("Header failed to send"));
+			}
+			else
+			{
+				bool bSuccess = Socket->Send(DataToSend.GetData(), DataToSend.Num(), BytesSent);
+				UE_LOG(LogTemp, Log, TEXT("Bytes to send: %d. Bytes sent: %d. Success: %d"), DataToSend.Num(), BytesSent, bSuccess);
+			}
+		}
+	}
 }
