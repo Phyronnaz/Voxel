@@ -50,7 +50,7 @@ public:
 	 * Add dirty chunks to SaveList
 	 * @param	SaveList		List to save chunks into
 	 */
-	void AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>>& SaveList);
+	void AddDirtyChunksToSaveList(std::deque<TSharedRef<FVoxelChunkSave>>& SaveList);
 	/**
 	 * Load chunks from SaveArray
 	 * @param	SaveArray	Array to load chunks from

@@ -49,6 +49,10 @@ AVoxelWorld::AVoxelWorld()
 	RootComponent = TouchCapsule;
 
 	WorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UFlatWorldGenerator::StaticClass());
+
+	OnClientConnectionTrigger.Reset();
+
+	TcpServer.SetWorld(this);
 }
 
 AVoxelWorld::~AVoxelWorld()
@@ -98,6 +102,12 @@ void AVoxelWorld::Tick(float DeltaTime)
 			{
 				TimeSinceSync = 0;
 				SendData();
+
+				if (OnClientConnectionTrigger.GetValue() > 0)
+				{
+					OnClientConnectionTrigger.Reset();
+					OnClientConnection.Broadcast();
+				}
 			}
 		}
 	}
@@ -252,22 +262,46 @@ void AVoxelWorld::ConnectClient(const FString& Ip, const int32 Port)
 	}
 }
 
+void AVoxelWorld::SendWorldToClients(bool bOnlyToNewConnections /*= true*/)
+{
+	if (!TcpServer.IsValid())
+	{
+		UE_LOG(VoxelLog, Error, TEXT("Cannot sent world to client if not server"));
+	}
+	else
+	{
+		FVoxelWorldSave Save;
+		GetSave(Save);
+		TcpServer.SendSave(Save, bOnlyToNewConnections);
+	}
+}
+
 void AVoxelWorld::ReceiveData()
 {
 	if (TcpClient.IsValid())
 	{
-		std::deque<FIntVector> ModifiedPositions;
-		std::deque<FVoxelValueDiff> ValueDiffs;
-		std::deque<FVoxelMaterialDiff> MaterialDiffs;
-
-		TcpClient.ReceiveData(ValueDiffs, MaterialDiffs);
-
-		Data->LoadFromDiffListsAndGetModifiedPositions(ValueDiffs, MaterialDiffs, ModifiedPositions);
-
-		for (auto Position : ModifiedPositions)
+		TcpClient.UpdateExpectedSize();
+		if (TcpClient.IsNextUpdateRemoteLoad())
 		{
-			UpdateChunksAtPosition(Position, true);
-			DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 1.1f / MultiplayerSyncRate);
+			FVoxelWorldSave Save;
+			TcpClient.ReceiveSave(Save);
+			LoadFromSave(Save, true);
+		}
+		else
+		{
+			std::deque<FIntVector> ModifiedPositions;
+			std::deque<FVoxelValueDiff> ValueDiffs;
+			std::deque<FVoxelMaterialDiff> MaterialDiffs;
+
+			TcpClient.ReceiveDiffs(ValueDiffs, MaterialDiffs);
+
+			Data->LoadFromDiffListsAndGetModifiedPositions(ValueDiffs, MaterialDiffs, ModifiedPositions);
+
+			for (auto Position : ModifiedPositions)
+			{
+				UpdateChunksAtPosition(Position, true);
+				DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 1.1f / MultiplayerSyncRate);
+			}
 		}
 	}
 }
@@ -409,6 +443,11 @@ void AVoxelWorld::UpdateAll(bool bAsync)
 void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 {
 	Render->AddInvoker(Invoker);
+}
+
+void AVoxelWorld::TriggerOnClientConnection()
+{
+	OnClientConnectionTrigger.Increment();
 }
 
 void AVoxelWorld::CreateWorld()

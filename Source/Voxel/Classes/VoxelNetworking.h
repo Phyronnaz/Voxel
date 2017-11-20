@@ -15,17 +15,22 @@ public:
 
 	void ConnectTcpClient(const FString& Ip, const int32 Port);
 
-	void ReceiveData(std::deque<FVoxelValueDiff>& OutValueDiffs, std::deque<FVoxelMaterialDiff>& OutMaterialDiffs);
+	void ReceiveDiffs(std::deque<FVoxelValueDiff>& OutValueDiffs, std::deque<FVoxelMaterialDiff>& OutMaterialDiffs);
 
-	bool IsValid();
+	void ReceiveSave(FVoxelWorldSave& OutSave);
+
+	bool IsValid() const;
+
+	bool IsNextUpdateRemoteLoad();
+
+	void UpdateExpectedSize();
 
 private:
 	FSocket* Socket;
 
 	bool bExpectedSizeUpToDate;
 	uint32 ExpectedSize;
-
-	void UpdateExpectedSize();
+	bool bNextUpdateIsRemoteLoad;
 };
 
 class FVoxelTcpServer
@@ -33,6 +38,8 @@ class FVoxelTcpServer
 public:
 	FVoxelTcpServer();
 	~FVoxelTcpServer();
+
+	void SetWorld(AVoxelWorld* World);
 
 	void StartTcpServer(const FString& Ip, const int32 Port);
 
@@ -43,10 +50,15 @@ public:
 	void SendValueDiffs(std::deque<FVoxelValueDiff>& Diffs);
 	void SendMaterialDiffs(std::deque<FVoxelMaterialDiff>& Diffs);
 
+	void SendSave(FVoxelWorldSave& Save, bool bOnlyToNewConnections);
+
 private:
 	FTcpListener* TcpListener;
 	TArray<FSocket*> Sockets;
+	TArray<FSocket*> SocketsToSendSave;
+	FCriticalSection SocketsLock;
+	AVoxelWorld* World;
 
 	template<typename T>
-	void SendData(std::deque<T>& DiffList, bool bIsValues);
+	void SendDiffs(std::deque<T>& DiffList, bool bIsValues);
 };

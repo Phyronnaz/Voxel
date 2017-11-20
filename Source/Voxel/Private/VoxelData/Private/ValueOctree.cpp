@@ -412,7 +412,7 @@ void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelM
 	}
 }
 
-void FValueOctree::AddDirtyChunksToSaveList(std::list<TSharedRef<FVoxelChunkSave>>& SaveList)
+void FValueOctree::AddDirtyChunksToSaveList(std::deque<TSharedRef<FVoxelChunkSave>>& SaveList)
 {
 	check(!IsLeaf() == (Childs.Num() == 8));
 	check(!(IsDirty() && IsLeaf() && Depth != 0));

@@ -86,7 +86,7 @@ public:
 	 * Get save array of this world
 	 * @return SaveArray
 	 */
-	void GetSave(FVoxelWorldSave& OutSave) const;
+	void GetSave(FVoxelWorldSave& OutSave);
 
 	/**
 	 * Load this world from save array
@@ -101,7 +101,7 @@ public:
 	 * @param	OutValueDiffPacketsList		Each packet is sorted by Id
 	 * @param	OutColorDiffPacketsList		Each packet is sorted by Id
 	 */
-	void GetDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutMaterialDiffList) const;
+	void GetDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutMaterialDiffList);
 
 	/**
 	 * Load values and colors from diff arrays, and queue update of chunks that have changed

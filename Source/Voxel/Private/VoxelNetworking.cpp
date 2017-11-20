@@ -60,19 +60,16 @@ void FVoxelTcpClient::ConnectTcpClient(const FString& Ip, const int32 Port)
 	}
 }
 
-void FVoxelTcpClient::ReceiveData(std::deque<FVoxelValueDiff>& OutValueDiffs, std::deque<FVoxelMaterialDiff>& OutMaterialDiffs)
+void FVoxelTcpClient::ReceiveDiffs(std::deque<FVoxelValueDiff>& OutValueDiffs, std::deque<FVoxelMaterialDiff>& OutMaterialDiffs)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ReceiveData);
 
+	check(!bNextUpdateIsRemoteLoad);
+
 	if (Socket)
 	{
-		if (!bExpectedSizeUpToDate)
-		{
-			UpdateExpectedSize();
-		}
 		if (bExpectedSizeUpToDate)
 		{
-
 			uint32 PendingDataSize = 0;
 			if (Socket->HasPendingData(PendingDataSize))
 			{
@@ -132,29 +129,72 @@ void FVoxelTcpClient::ReceiveData(std::deque<FVoxelValueDiff>& OutValueDiffs, st
 	}
 }
 
-bool FVoxelTcpClient::IsValid()
+void FVoxelTcpClient::ReceiveSave(FVoxelWorldSave& OutSave)
+{
+	check(bNextUpdateIsRemoteLoad);
+
+	if (Socket)
+	{
+		if (bExpectedSizeUpToDate)
+		{
+			uint32 PendingDataSize = 0;
+			if (Socket->HasPendingData(PendingDataSize))
+			{
+				if (PendingDataSize >= ExpectedSize)
+				{
+					FBufferArchive ReceivedData(true);
+					ReceivedData.SetNumUninitialized(ExpectedSize);
+
+					int32 BytesRead = 0;
+					Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead);
+					check(BytesRead == ExpectedSize);
+
+					ReceivedData << OutSave.Depth;
+					ReceivedData << OutSave.Data;
+
+					bNextUpdateIsRemoteLoad = false;
+					bExpectedSizeUpToDate = false;
+					UpdateExpectedSize();
+				}
+			}
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Client not connected"));
+	}
+}
+
+bool FVoxelTcpClient::IsValid() const
 {
 	return Socket != nullptr;
 }
 
+bool FVoxelTcpClient::IsNextUpdateRemoteLoad()
+{
+	return bNextUpdateIsRemoteLoad;
+}
+
 void FVoxelTcpClient::UpdateExpectedSize()
 {
-	check(!bExpectedSizeUpToDate);
-
-	uint32 PendingDataSize = 0;
-	if (Socket->HasPendingData(PendingDataSize))
+	if (!bExpectedSizeUpToDate)
 	{
-		if (PendingDataSize >= 4)
+		uint32 PendingDataSize = 0;
+		if (Socket->HasPendingData(PendingDataSize))
 		{
-			uint8 ReceivedData[4];
+			if (PendingDataSize >= 5)
+			{
+				uint8 ReceivedData[5];
 
-			int BytesRead;
-			Socket->Recv(ReceivedData, 4, BytesRead);
-			check(BytesRead == 4);
+				int BytesRead;
+				Socket->Recv(ReceivedData, 5, BytesRead);
+				check(BytesRead == 5);
 
-			ExpectedSize = ReceivedData[0] + 256 * (ReceivedData[1] + 256 * (ReceivedData[2] + 256 * ReceivedData[3]));
+				ExpectedSize = ReceivedData[0] + 256 * (ReceivedData[1] + 256 * (ReceivedData[2] + 256 * ReceivedData[3]));
+				bNextUpdateIsRemoteLoad = ReceivedData[4];
 
-			bExpectedSizeUpToDate = true;
+				bExpectedSizeUpToDate = true;
+			}
 		}
 	}
 }
@@ -178,6 +218,11 @@ FVoxelTcpServer::~FVoxelTcpServer()
 	delete TcpListener;
 }
 
+void FVoxelTcpServer::SetWorld(AVoxelWorld* InWorld)
+{
+	World = InWorld;
+}
+
 void FVoxelTcpServer::StartTcpServer(const FString& Ip, const int32 Port)
 {
 	if (TcpListener)
@@ -197,35 +242,81 @@ void FVoxelTcpServer::StartTcpServer(const FString& Ip, const int32 Port)
 
 bool FVoxelTcpServer::Accept(FSocket* NewSocket, const FIPv4Endpoint& Endpoint)
 {
+	FScopeLock Lock(&SocketsLock);
+
+	World->TriggerOnClientConnection();
+
 	Sockets.Add(NewSocket);
+	SocketsToSendSave.Add(NewSocket);
 
 	int BufferSize = 1000000;
 	int NewSize;
 	NewSocket->SetSendBufferSize(BufferSize, NewSize);
 	check(BufferSize == NewSize);
 
-
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Connected!"));
+
 	return true;
 }
 
 bool FVoxelTcpServer::IsValid()
 {
+	FScopeLock Lock(&SocketsLock);
 	return Sockets.Num() > 0;
 }
 
 void FVoxelTcpServer::SendValueDiffs(std::deque<FVoxelValueDiff>& Diffs)
 {
-	SendData(Diffs, true);
+	SendDiffs(Diffs, true);
 }
 
 void FVoxelTcpServer::SendMaterialDiffs(std::deque<FVoxelMaterialDiff>& Diffs)
 {
-	SendData(Diffs, false);
+	SendDiffs(Diffs, false);
+}
+
+void FVoxelTcpServer::SendSave(FVoxelWorldSave& Save, bool bOnlyToNewConnections)
+{
+	FBufferArchive Writer;
+	Writer << Save.Depth;
+	Writer << Save.Data;
+
+	{
+		FScopeLock Lock(&SocketsLock);
+		for (auto Socket : (bOnlyToNewConnections ? SocketsToSendSave : Sockets))
+		{
+			// Send
+			int32 BytesSent = 0;
+
+			uint8 Data[5];
+
+			uint32 Tmp = Writer.Num();
+			Data[0] = Tmp % 256;
+			Tmp /= 256;
+			Data[1] = Tmp % 256;
+			Tmp /= 256;
+			Data[2] = Tmp % 256;
+			Tmp /= 256;
+			Data[3] = Tmp % 256;
+			Data[4] = true;
+
+			Socket->Send(Data, 5, BytesSent);
+			if (BytesSent != 5)
+			{
+				UE_LOG(LogTemp, Error, TEXT("Header for remote load failed to send"));
+			}
+			else
+			{
+				bool bSuccess = Socket->Send(Writer.GetData(), Writer.Num(), BytesSent);
+				UE_LOG(LogTemp, Log, TEXT("Remote load: Bytes to send: %d. Bytes sent: %d. Success: %d"), Writer.Num(), BytesSent, bSuccess);
+			}
+		}
+		SocketsToSendSave.Reset();
+	}
 }
 
 template<typename T>
-void FVoxelTcpServer::SendData(std::deque<T>& DiffList, bool bIsValues)
+void FVoxelTcpServer::SendDiffs(std::deque<T>& DiffList, bool bIsValues)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SendData);
 
@@ -251,31 +342,35 @@ void FVoxelTcpServer::SendData(std::deque<T>& DiffList, bool bIsValues)
 		// Send archive serialized data to binary array
 		Compressor.Flush();
 
-		for (auto Socket : Sockets)
 		{
-			// Send
-			int32 BytesSent = 0;
-
-			uint8 Data[4];
-
-			uint32 Tmp = DataToSend.Num();
-			Data[0] = Tmp % 256;
-			Tmp /= 256;
-			Data[1] = Tmp % 256;
-			Tmp /= 256;
-			Data[2] = Tmp % 256;
-			Tmp /= 256;
-			Data[3] = Tmp % 256;
-
-			Socket->Send(Data, 4, BytesSent);
-			if (BytesSent != 4)
+			FScopeLock Lock(&SocketsLock);
+			for (auto Socket : Sockets)
 			{
-				UE_LOG(LogTemp, Error, TEXT("Header failed to send"));
-			}
-			else
-			{
-				bool bSuccess = Socket->Send(DataToSend.GetData(), DataToSend.Num(), BytesSent);
-				UE_LOG(LogTemp, Log, TEXT("Bytes to send: %d. Bytes sent: %d. Success: %d"), DataToSend.Num(), BytesSent, bSuccess);
+				// Send
+				int32 BytesSent = 0;
+
+				uint8 Data[5];
+
+				uint32 Tmp = DataToSend.Num();
+				Data[0] = Tmp % 256;
+				Tmp /= 256;
+				Data[1] = Tmp % 256;
+				Tmp /= 256;
+				Data[2] = Tmp % 256;
+				Tmp /= 256;
+				Data[3] = Tmp % 256;
+				Data[4] = false;
+
+				Socket->Send(Data, 5, BytesSent);
+				if (BytesSent != 5)
+				{
+					UE_LOG(LogTemp, Error, TEXT("Header failed to send"));
+				}
+				else
+				{
+					bool bSuccess = Socket->Send(DataToSend.GetData(), DataToSend.Num(), BytesSent);
+					UE_LOG(LogTemp, Log, TEXT("Bytes to send: %d. Bytes sent: %d. Success: %d"), DataToSend.Num(), BytesSent, bSuccess);
+				}
 			}
 		}
 	}

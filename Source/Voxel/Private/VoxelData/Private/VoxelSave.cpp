@@ -41,7 +41,7 @@ FVoxelWorldSave::FVoxelWorldSave()
 
 }
 
-void FVoxelWorldSave::Init(int NewDepth, std::list<TSharedRef<FVoxelChunkSave>> ChunksList)
+void FVoxelWorldSave::Init(int NewDepth, std::deque<TSharedRef<FVoxelChunkSave>> ChunksList)
 {
 	Depth = NewDepth;
 

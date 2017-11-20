@@ -4,6 +4,7 @@
 #include <list>
 #include <forward_list>
 #include "VoxelMaterial.h"
+#include <deque>
 #include "VoxelSave.generated.h"
 
 
@@ -44,7 +45,7 @@ public:
 
 	FVoxelWorldSave();
 
-	void Init(int NewDepth, std::list<TSharedRef<FVoxelChunkSave>> ChunksList);
+	void Init(int NewDepth, std::deque<TSharedRef<FVoxelChunkSave>> ChunksList);
 
 	std::list<FVoxelChunkSave> GetChunksList();
 };

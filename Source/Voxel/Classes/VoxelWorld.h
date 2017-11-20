@@ -27,6 +27,7 @@ class AVoxelWorldEditorInterface;
 
 DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
 DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClientConnection);
 
 /**
  * Voxel World actor class
@@ -40,6 +41,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Voxel")
 		TArray<UVoxelGrassType*> GrassTypes;
 
+	UPROPERTY(BlueprintAssignable)
+		FOnClientConnection OnClientConnection;
+
 	// Dirty hack to get a ref to AVoxelWorldEditor::StaticClass()
 	UClass* VoxelWorldEditorClass;
 
@@ -50,6 +54,8 @@ public:
 	void DestroyInEditor();
 
 	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
+
+	void TriggerOnClientConnection();
 
 	FORCEINLINE AVoxelWorldEditorInterface	* GetVoxelWorldEditor() const;
 	FORCEINLINE FVoxelData* GetData() const;
@@ -169,6 +175,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void ConnectClient(const FString& Ip, const int32 Port);
 
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		void SendWorldToClients(bool bOnlyToNewConnections = true);
 
 protected:
 	// Called when the game starts or when spawned
@@ -257,6 +265,8 @@ private:
 
 	FVoxelData* Data;
 	FVoxelRender* Render;
+
+	FThreadSafeCounter OnClientConnectionTrigger;
 
 	bool bIsCreated;
 

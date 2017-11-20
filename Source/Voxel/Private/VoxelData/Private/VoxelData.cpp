@@ -238,11 +238,13 @@ FORCEINLINE void FVoxelData::ClampToWorld(int& X, int& Y, int& Z) const
 	Z = FMath::Clamp(Z, -S, S - 1);
 }
 
-void FVoxelData::GetSave(FVoxelWorldSave& OutSave) const
+void FVoxelData::GetSave(FVoxelWorldSave& OutSave)
 {
-	std::list<TSharedRef<FVoxelChunkSave>> SaveList;
+	BeginGet();
+	std::deque<TSharedRef<FVoxelChunkSave>> SaveList;
 	MainOctree->AddDirtyChunksToSaveList(SaveList);
 	OutSave.Init(Depth, SaveList);
+	EndGet();
 }
 
 void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset)
@@ -260,9 +262,11 @@ void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std:
 	EndSet();
 }
 
-void FVoxelData::GetDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutMaterialDiffList) const
+void FVoxelData::GetDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutMaterialDiffList)
 {
+	BeginGet();
 	MainOctree->AddChunksToDiffLists(OutValueDiffList, OutMaterialDiffList);
+	EndGet();
 }
 
 void FVoxelData::LoadFromDiffListsAndGetModifiedPositions(std::deque<FVoxelValueDiff> ValueDiffList, std::deque<FVoxelMaterialDiff> MaterialDiffList, std::deque<FIntVector>& OutModifiedPositions)
