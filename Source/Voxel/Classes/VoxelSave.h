@@ -1,8 +1,8 @@
+// Copyright 2017 Phyronnaz
+
 #pragma once
 
 #include "CoreMinimal.h"
-#include <list>
-#include <forward_list>
 #include "VoxelMaterial.h"
 #include <deque>
 #include "VoxelSave.generated.h"
@@ -45,9 +45,9 @@ public:
 
 	FVoxelWorldSave();
 
-	void Init(int NewDepth, std::deque<TSharedRef<FVoxelChunkSave>> ChunksList);
+	void Init(int NewDepth, const std::deque<TSharedRef<FVoxelChunkSave>>& ChunksList);
 
-	std::list<FVoxelChunkSave> GetChunksList();
+	std::deque<FVoxelChunkSave> GetChunksList() const;
 };
 
 

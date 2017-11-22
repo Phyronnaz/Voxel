@@ -1,5 +1,11 @@
+// Copyright 2017 Phyronnaz
+
 #include "VoxelNetworking.h"
-#include "VoxelPrivatePCH.h"
+#include "Sockets.h"
+#include "TcpListener.h"
+
+#include "ArchiveSaveCompressedProxy.h"
+#include "ArchiveLoadCompressedProxy.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelNetworking ~ Receive data"), STAT_ReceiveData, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelNetworking ~ Send data"), STAT_SendData, STATGROUP_Voxel);

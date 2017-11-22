@@ -3,8 +3,6 @@
 #pragma once
 
 #include "SphericalPerlinNoiseWorldGenerator.h"
-#include "CoreMinimal.h"
-#include "VoxelPrivatePCH.h"
 
 USphericalPerlinNoiseWorldGenerator::USphericalPerlinNoiseWorldGenerator()
 	: Noise()

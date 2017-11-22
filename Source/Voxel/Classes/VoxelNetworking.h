@@ -1,11 +1,18 @@
+// Copyright 2017 Phyronnaz
+
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Networking.h"
-#include "Engine.h"
+#include "VoxelSave.h"
+#include "IPv4Endpoint.h"
 #include <deque>
 
 #define PACKET_SIZE_IN_DIFF 250
+
+class FSocket;
+class FTcpListener;
+class AVoxelWorld;
+
 
 class FVoxelTcpClient
 {

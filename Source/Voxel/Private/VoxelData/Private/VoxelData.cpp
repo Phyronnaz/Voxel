@@ -1,10 +1,9 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelData.h"
-#include "VoxelPrivatePCH.h"
 #include "ValueOctree.h"
 #include "VoxelSave.h"
-#include "GenericPlatformProcess.h"
+#include "VoxelWorldGenerator.h"
 
 FVoxelData::FVoxelData(int Depth, UVoxelWorldGenerator* WorldGenerator, bool bMultiplayer)
 	: Depth(Depth)
@@ -247,7 +246,7 @@ void FVoxelData::GetSave(FVoxelWorldSave& OutSave)
 	EndGet();
 }
 
-void FVoxelData::LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset)
+void FVoxelData::LoadFromSaveAndGetModifiedPositions(const FVoxelWorldSave& Save, std::deque<FIntVector>& OutModifiedPositions, bool bReset)
 {
 	BeginSet();
 	if (bReset)

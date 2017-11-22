@@ -1,3 +1,7 @@
+// Copyright 2017 Phyronnaz
+
+#pragma once
+
 //
 // LICENCE:
 //  The MIT License (MIT)

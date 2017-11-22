@@ -5,16 +5,16 @@
 #include "CoreMinimal.h"
 #include "VoxelBox.h"
 #include "TransitionDirection.h"
-#include <deque>
 #include "VoxelProceduralMeshComponent.h"
+#include <deque>
 
 class AVoxelWorld;
 class FVoxelData;
 class FChunkOctree;
 class UVoxelChunkComponent;
-class UVoxelProceduralMeshComponent;
 class FCollisionMeshHandler;
 class FAsyncPolygonizerTask;
+class UVoxelInvokerComponent;
 
 struct FChunkToDelete
 {
@@ -73,8 +73,8 @@ public:
 	UVoxelChunkComponent* GetInactiveChunk();
 
 	void UpdateChunk(FChunkOctree* Chunk, bool bAsync);
-	void UpdateChunksAtPosition(FIntVector Position, bool bAsync);
-	void UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync);
+	void UpdateChunksAtPosition(const FIntVector& Position, bool bAsync);
+	void UpdateChunksOverlappingBox(const FVoxelBox& Box, bool bAsync);
 	void ApplyUpdates();
 
 	void UpdateAll(bool bAsync);
@@ -93,17 +93,17 @@ public:
 	void ScheduleDeletion(UVoxelChunkComponent* Chunk);
 	void ChunkHasBeenDestroyed(UVoxelChunkComponent* Chunk);
 
-	FChunkOctree* GetChunkOctreeAt(FIntVector Position) const;
+	FChunkOctree* GetChunkOctreeAt(const FIntVector& Position) const;
 
-	FChunkOctree* GetAdjacentChunk(TransitionDirection Direction, FIntVector Position, int Size) const;
+	FChunkOctree* GetAdjacentChunk(TransitionDirection Direction, const FIntVector& Position, int Size) const;
 
-	int GetDepthAt(FIntVector Position) const;
+	int GetDepthAt(const FIntVector& Position) const;
 
 	// MUST be called before delete
 	void Destroy();
 
 	// Needed when ChunksParent != World
-	FVector GetGlobalPosition(FIntVector LocalPosition);
+	FVector GetGlobalPosition(const FIntVector& LocalPosition);
 
 private:
 

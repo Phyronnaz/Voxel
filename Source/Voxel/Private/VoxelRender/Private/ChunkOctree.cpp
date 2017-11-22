@@ -1,10 +1,9 @@
+// Copyright 2017 Phyronnaz
+
 #include "ChunkOctree.h"
-#include "VoxelPrivatePCH.h"
 #include "VoxelChunkComponent.h"
-#include "Engine/World.h"
-#include "VoxelInvokerComponent.h"
-#include "Math/NumericLimits.h"
 #include "VoxelRender.h"
+#include "VoxelInvokerComponent.h"
 
 FChunkOctree::FChunkOctree(FVoxelRender* Render, FIntVector Position, uint8 Depth, uint64 Id)
 	: FOctree(Position, Depth, Id)
@@ -122,7 +121,7 @@ void FChunkOctree::UpdateLOD(const std::deque<TWeakObjectPtr<UVoxelInvokerCompon
 	}
 }
 
-FChunkOctree* FChunkOctree::GetLeaf(FIntVector PointPosition)
+FChunkOctree* FChunkOctree::GetLeaf(const FIntVector& PointPosition)
 {
 	check(bHasChunk == (VoxelChunk != nullptr));
 	check(bHasChilds == (Childs.Num() == 8));
@@ -141,7 +140,7 @@ UVoxelChunkComponent* FChunkOctree::GetVoxelChunk() const
 	return VoxelChunk;
 }
 
-FChunkOctree* FChunkOctree::GetChild(FIntVector PointPosition)
+FChunkOctree* FChunkOctree::GetChild(const FIntVector& PointPosition)
 {
 	check(bHasChilds);
 	check(IsInOctree(PointPosition.X, PointPosition.Y, PointPosition.Z));
@@ -208,7 +207,7 @@ void FChunkOctree::DeleteChilds()
 	bHasChilds = false;
 }
 
-void FChunkOctree::GetLeafsOverlappingBox(FVoxelBox Box, std::deque<FChunkOctree*>& Octrees)
+void FChunkOctree::GetLeafsOverlappingBox(const FVoxelBox& Box, std::deque<FChunkOctree*>& Octrees)
 {
 	FVoxelBox OctreeBox(GetMinimalCornerPosition(), GetMaximalCornerPosition());
 

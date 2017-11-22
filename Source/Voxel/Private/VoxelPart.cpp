@@ -1,11 +1,10 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelPart.h"
-#include "VoxelPrivatePCH.h"
 #include "VoxelProceduralMeshComponent.h"
+#include "VoxelAutoDisableComponent.h"
 #include "VoxelData.h"
 #include "VoxelPolygonizer.h"
-#include "VoxelAutoDisableComponent.h"
 
 // TODO: grass support
 

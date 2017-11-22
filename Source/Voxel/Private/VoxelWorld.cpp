@@ -1,17 +1,14 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelWorld.h"
+#include "VoxelPrivate.h"
 #include "VoxelData.h"
-#include "VoxelPrivatePCH.h"
 #include "VoxelRender.h"
 #include "Components/CapsuleComponent.h"
-#include "Engine.h"
-#include <forward_list>
 #include "FlatWorldGenerator.h"
 #include "VoxelInvokerComponent.h"
 #include "VoxelWorldEditorInterface.h"
-
-DEFINE_LOG_CATEGORY(VoxelLog)
+#include <deque>
 
 AVoxelWorld::AVoxelWorld()
 	: VoxelWorldEditorClass(nullptr)
@@ -143,7 +140,7 @@ void AVoxelWorld::PostLoad()
 
 #endif
 
-float AVoxelWorld::GetValue(FIntVector Position) const
+float AVoxelWorld::GetValue(const FIntVector& Position) const
 {
 	if (IsInWorld(Position))
 	{
@@ -158,12 +155,12 @@ float AVoxelWorld::GetValue(FIntVector Position) const
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Get value: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogVoxel, Error, TEXT("Get value: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return 0;
 	}
 }
 
-FVoxelMaterial AVoxelWorld::GetMaterial(FIntVector Position) const
+FVoxelMaterial AVoxelWorld::GetMaterial(const FIntVector& Position) const
 {
 	if (IsInWorld(Position))
 	{
@@ -178,12 +175,12 @@ FVoxelMaterial AVoxelWorld::GetMaterial(FIntVector Position) const
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogVoxel, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return FVoxelMaterial();
 	}
 }
 
-void AVoxelWorld::SetValue(FIntVector Position, float Value)
+void AVoxelWorld::SetValue(const FIntVector& Position, float Value)
 {
 	if (IsInWorld(Position))
 	{
@@ -193,11 +190,11 @@ void AVoxelWorld::SetValue(FIntVector Position, float Value)
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogVoxel, Error, TEXT("Get material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
-void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
+void AVoxelWorld::SetMaterial(const FIntVector& Position, const FVoxelMaterial& Material)
 {
 	if (IsInWorld(Position))
 	{
@@ -207,7 +204,7 @@ void AVoxelWorld::SetMaterial(FIntVector Position, FVoxelMaterial Material)
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Set material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogVoxel, Error, TEXT("Set material: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 	}
 }
 
@@ -217,11 +214,11 @@ void AVoxelWorld::GetSave(FVoxelWorldSave& OutSave) const
 	Data->GetSave(OutSave);
 }
 
-void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
+void AVoxelWorld::LoadFromSave(const FVoxelWorldSave& Save, bool bReset)
 {
 	if (Save.Depth == Depth)
 	{
-		std::forward_list<FIntVector> ModifiedPositions;
+		std::deque<FIntVector> ModifiedPositions;
 		Data->LoadFromSaveAndGetModifiedPositions(Save, ModifiedPositions, bReset);
 		for (auto Position : ModifiedPositions)
 		{
@@ -234,7 +231,7 @@ void AVoxelWorld::LoadFromSave(FVoxelWorldSave Save, bool bReset)
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("LoadFromSave: Current Depth is %d while Save one is %d"), Depth, Save.Depth);
+		UE_LOG(LogVoxel, Error, TEXT("LoadFromSave: Current Depth is %d while Save one is %d"), Depth, Save.Depth);
 	}
 }
 
@@ -242,7 +239,7 @@ void AVoxelWorld::StartServer(const FString& Ip, const int32 Port)
 {
 	if (TcpClient.IsValid())
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Cannot start server: client already running"));
+		UE_LOG(LogVoxel, Error, TEXT("Cannot start server: client already running"));
 	}
 	else
 	{
@@ -254,7 +251,7 @@ void AVoxelWorld::ConnectClient(const FString& Ip, const int32 Port)
 {
 	if (TcpServer.IsValid())
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Cannot connect client: server already running"));
+		UE_LOG(LogVoxel, Error, TEXT("Cannot connect client: server already running"));
 	}
 	else
 	{
@@ -266,7 +263,7 @@ void AVoxelWorld::SendWorldToClients(bool bOnlyToNewConnections /*= true*/)
 {
 	if (!TcpServer.IsValid())
 	{
-		UE_LOG(VoxelLog, Error, TEXT("Cannot sent world to client if not server"));
+		UE_LOG(LogVoxel, Error, TEXT("Cannot sent world to client if not server"));
 	}
 	else
 	{
@@ -399,18 +396,18 @@ int AVoxelWorld::GetRayCount() const
 	return RayCount;
 }
 
-FIntVector AVoxelWorld::GlobalToLocal(FVector Position) const
+FIntVector AVoxelWorld::GlobalToLocal(const FVector& Position) const
 {
 	FVector P = GetTransform().InverseTransformPosition(Position) / GetVoxelSize();
 	return FIntVector(FMath::RoundToInt(P.X), FMath::RoundToInt(P.Y), FMath::RoundToInt(P.Z));
 }
 
-FVector AVoxelWorld::LocalToGlobal(FIntVector Position) const
+FVector AVoxelWorld::LocalToGlobal(const FIntVector& Position) const
 {
 	return GetTransform().TransformPosition(GetVoxelSize() * (FVector)Position);
 }
 
-TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(FVector GlobalPosition)
+TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition)
 {
 	FVector P = GetTransform().InverseTransformPosition(GlobalPosition) / GetVoxelSize();
 	return TArray<FIntVector>({
@@ -425,12 +422,12 @@ TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(FVector GlobalPosition)
 	});
 }
 
-void AVoxelWorld::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
+void AVoxelWorld::UpdateChunksAtPosition(const FIntVector& Position, bool bAsync)
 {
 	Render->UpdateChunksAtPosition(Position, bAsync);
 }
 
-void AVoxelWorld::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
+void AVoxelWorld::UpdateChunksOverlappingBox(const FVoxelBox& Box, bool bAsync)
 {
 	Render->UpdateChunksOverlappingBox(Box, bAsync);
 }
@@ -454,7 +451,7 @@ void AVoxelWorld::CreateWorld()
 {
 	check(!IsCreated());
 
-	UE_LOG(VoxelLog, Warning, TEXT("Loading world"));
+	UE_LOG(LogVoxel, Warning, TEXT("Loading world"));
 
 	Depth = NewDepth;
 	VoxelSize = NewVoxelSize;
@@ -470,7 +467,7 @@ void AVoxelWorld::CreateWorld()
 		InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), WorldGenerator);
 		if (InstancedWorldGenerator == nullptr)
 		{
-			UE_LOG(VoxelLog, Error, TEXT("Invalid world generator"));
+			UE_LOG(LogVoxel, Error, TEXT("Invalid world generator"));
 			InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), UFlatWorldGenerator::StaticClass());
 		}
 	}
@@ -493,7 +490,7 @@ void AVoxelWorld::DestroyWorld()
 {
 	check(IsCreated());
 
-	UE_LOG(VoxelLog, Warning, TEXT("Unloading world"));
+	UE_LOG(LogVoxel, Warning, TEXT("Unloading world"));
 
 	check(Render);
 	check(Data);
@@ -565,7 +562,7 @@ bool AVoxelWorld::IsCreated() const
 	return bIsCreated;
 }
 
-int AVoxelWorld::GetDepthAt(FIntVector Position) const
+int AVoxelWorld::GetDepthAt(const FIntVector& Position) const
 {
 	if (IsInWorld(Position))
 	{
@@ -573,12 +570,12 @@ int AVoxelWorld::GetDepthAt(FIntVector Position) const
 	}
 	else
 	{
-		UE_LOG(VoxelLog, Error, TEXT("GetDepthAt: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
+		UE_LOG(LogVoxel, Error, TEXT("GetDepthAt: Not in world: (%d, %d, %d)"), Position.X, Position.Y, Position.Z);
 		return 0;
 	}
 }
 
-bool AVoxelWorld::IsInWorld(FIntVector Position) const
+bool AVoxelWorld::IsInWorld(const FIntVector& Position) const
 {
 	return Data->IsInWorld(Position.X, Position.Y, Position.Z);
 }

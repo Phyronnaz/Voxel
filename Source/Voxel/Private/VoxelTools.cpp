@@ -1,8 +1,7 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelTools.h"
-#include "VoxelPrivatePCH.h"
-#include "Engine/World.h"
+#include "VoxelPrivate.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/HUD.h"
 #include "Engine/LocalPlayer.h"
@@ -32,7 +31,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 
 	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("SetValueSphere: World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("SetValueSphere: World is NULL"));
 		return;
 	}
 
@@ -86,7 +85,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 //{
 //	if (World == nullptr)
 //	{
-//		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+//		UE_LOG(LogVoxel, Error, TEXT("World is NULL"));
 //		return;
 //	}
 //	check(World);
@@ -122,7 +121,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 
 	if (World == nullptr)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("SetMaterialSphere: World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("SetMaterialSphere: World is NULL"));
 		return;
 	}
 
@@ -191,7 +190,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 
 
 void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float MaxDistance, const float Precision,
-	const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, std::forward_list<TTuple<FIntVector, float>>& OutModifiedPositionsAndDistances)
+	const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, std::deque<TTuple<FIntVector, float>>& OutModifiedPositionsAndDistances)
 {
 	const FVector ToolPosition = StartPosition;
 
@@ -262,11 +261,11 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector StartPosi
 
 	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("SetValueProjection: World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("SetValueProjection: World is NULL"));
 		return;
 	}
 
-	std::forward_list<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
+	std::deque<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
 	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
 
 	for (auto Tuple : ModifiedPositionsAndDistances)
@@ -292,13 +291,13 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector Start
 
 	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("SetMaterialProjection: World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("SetMaterialProjection: World is NULL"));
 		return;
 	}
 
 	const float VoxelDiagonalLength = 1.73205080757f * World->GetVoxelSize();
 
-	std::forward_list<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
+	std::deque<TTuple<FIntVector, float>> ModifiedPositionsAndDistances;
 	FindModifiedPositionsForRaycasts(World, StartPosition, Direction, Radius + FadeDistance + 2 * VoxelDiagonalLength, MaxDistance, Precision, bShowRaycasts, bShowHitPoints, bShowModifiedVoxels, ModifiedPositionsAndDistances);
 
 	for (auto Tuple : ModifiedPositionsAndDistances)
@@ -353,7 +352,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector StartPosition, FVecto
 
 	if (World == nullptr)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("World is NULL"));
 		return;
 	}
 	check(World);
@@ -458,14 +457,14 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 
 	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("ImportAsset: World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("ImportAsset: World is NULL"));
 		return;
 	}
 	check(World);
 
 	if (!Asset)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("ImportAsset: Asset is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("ImportAsset: Asset is NULL"));
 		return;
 	}
 
@@ -608,7 +607,7 @@ void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, const bool b
 
 	if (!World)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("ApplyWaterEffect: World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("ApplyWaterEffect: World is NULL"));
 		return;
 	}
 
@@ -695,7 +694,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 
 	if (World == nullptr)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("World is NULL"));
+		UE_LOG(LogVoxel, Error, TEXT("World is NULL"));
 		return;
 	}
 	check(World);
@@ -707,7 +706,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 	TArray<bool> Visited;
 	Visited.SetNumZeroed(2 * IntRadius * 2 * IntRadius * 2 * IntRadius);
 
-	std::forward_list<FIntVector> Queue;
+	std::deque<FIntVector> Queue;
 	Queue.push_front(FIntVector::ZeroValue);
 
 	for (int X = -IntRadius; X < IntRadius; X++)
@@ -781,7 +780,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 
 	TSharedPtr<FVoxelData> Data = MakeShareable(new FVoxelData(Depth, WorldGenerator, false));
 
-	std::forward_list<FIntVector> PointPositions;
+	std::deque<FIntVector> PointPositions;
 
 	for (int Z = -IntRadius; Z < IntRadius; Z++)
 	{

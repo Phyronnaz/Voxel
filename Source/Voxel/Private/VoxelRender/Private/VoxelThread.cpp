@@ -1,17 +1,15 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelThread.h"
-#include "VoxelPrivatePCH.h"
-#include "VoxelData.h"
 #include "VoxelChunkComponent.h"
 #include "VoxelPolygonizer.h"
+#include "VoxelData.h"
+#include "VoxelWorldGenerator.h"
 #include "InstancedStaticMesh.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "GenericPlatformProcess.h"
-#include "VoxelWorldGenerator.h"
 
 
-FAsyncFoliageTask::FAsyncFoliageTask(FVoxelProcMeshSection Section, FVoxelGrassVariety GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, FIntVector ChunkPosition, UVoxelChunkComponent* Chunk)
+FAsyncFoliageTask::FAsyncFoliageTask(const FVoxelProcMeshSection& Section, const FVoxelGrassVariety& GrassVariety, int GrassVarietyIndex, uint8 Material, AVoxelWorld* World, const FIntVector& ChunkPosition, UVoxelChunkComponent* Chunk)
 	: Section(Section)
 	, GrassVariety(GrassVariety)
 	, GrassVarietyIndex(GrassVarietyIndex)
@@ -28,7 +26,7 @@ FAsyncFoliageTask::FAsyncFoliageTask(FVoxelProcMeshSection Section, FVoxelGrassV
 
 void FAsyncFoliageTask::DoWork()
 {
-	std::forward_list<FMatrix> InstanceTransformsList;
+	std::deque<FMatrix> InstanceTransformsList;
 	uint32 InstanceTransformsCount = 0;
 
 	const float VoxelTriangleArea = (VoxelSize * VoxelSize) / 2;

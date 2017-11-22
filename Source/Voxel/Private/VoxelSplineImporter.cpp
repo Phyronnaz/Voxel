@@ -1,5 +1,6 @@
+// Copyright 2017 Phyronnaz
+
 #include "VoxelSplineImporter.h"
-#include "VoxelPrivatePCH.h"
 
 #include "Components/CapsuleComponent.h"
 #include "Components/SplineComponent.h"

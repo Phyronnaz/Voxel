@@ -1,9 +1,9 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelAutoDisableComponent.h"
-#include "VoxelPrivatePCH.h"
-#include "Components/PrimitiveComponent.h"
-#include "Engine.h"
+#include "VoxelPrivate.h"
+#include "VoxelWorld.h"
+#include "Kismet/GameplayStatics.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelAutoDisableComponent ~ Tick"), STAT_VoxelAutoDisable_Tick, STATGROUP_Voxel);
 
@@ -23,7 +23,7 @@ void UVoxelAutoDisableComponent::BeginPlay()
 
 		if (!Component)
 		{
-			UE_LOG(VoxelLog, Error, TEXT("VoxelAutoDisableComponent: Invalid component class"));
+			UE_LOG(LogVoxel, Error, TEXT("VoxelAutoDisableComponent: Invalid component class"));
 		}
 		else
 		{
@@ -48,13 +48,13 @@ void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
 			if (FoundActors.Num() == 0)
 			{
-				UE_LOG(VoxelLog, Warning, TEXT("No world found"));
+				UE_LOG(LogVoxel, Warning, TEXT("No world found"));
 			}
 			else
 			{
 				if (FoundActors.Num() > 1)
 				{
-					UE_LOG(VoxelLog, Warning, TEXT("More than one world found"));
+					UE_LOG(LogVoxel, Warning, TEXT("More than one world found"));
 				}
 				World = (AVoxelWorld*)FoundActors[0];
 			}

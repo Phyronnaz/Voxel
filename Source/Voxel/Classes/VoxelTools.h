@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
-#include "VoxelDataAsset.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;
+class UVoxelAsset;
 
 UENUM(BlueprintType)
 enum class EBlueprintSuccess : uint8

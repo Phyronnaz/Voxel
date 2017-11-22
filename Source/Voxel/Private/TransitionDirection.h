@@ -1,3 +1,5 @@
+// Copyright 2017 Phyronnaz
+
 #pragma once
 
 enum TransitionDirection { XMin, XMax, YMin, YMax, ZMin, ZMax };

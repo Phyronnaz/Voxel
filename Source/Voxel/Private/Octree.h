@@ -1,3 +1,5 @@
+// Copyright 2017 Phyronnaz
+
 #pragma once
 #include "CoreMinimal.h"
 
@@ -82,8 +84,3 @@ protected:
 	// Does this octree has child?
 	bool bHasChilds;
 };
-
-inline uint64 GetTypeHash(FOctree Octree)
-{
-	return Octree.Id;
-}

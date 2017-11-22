@@ -3,12 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
 #include "VoxelPart.generated.h"
 
 class UVoxelProceduralMeshComponent;
 class UVoxelAutoDisableComponent;
-class FVoxelData;
 class AVoxelWorld;
 
 
@@ -28,5 +26,4 @@ private:
 
 	UPROPERTY(EditAnywhere)
 		UVoxelAutoDisableComponent* AutoDisableComponent;
-
 };

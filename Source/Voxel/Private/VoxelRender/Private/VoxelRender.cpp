@@ -1,12 +1,12 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelRender.h"
-#include "VoxelPrivatePCH.h"
-#include "VoxelChunkComponent.h"
+#include "VoxelPrivate.h"
+#include "VoxelWorld.h"
+#include "VoxelData.h"
 #include "ChunkOctree.h"
+#include "VoxelChunkComponent.h"
 #include "VoxelPolygonizerForCollisions.h"
-#include "VoxelInvokerComponent.h"
-#include "VoxelThread.h"
 #include <algorithm>
 
 DECLARE_CYCLE_STAT(TEXT("VoxelRender ~ ApplyUpdates"), STAT_ApplyUpdates, STATGROUP_Voxel);
@@ -69,7 +69,7 @@ public:
 	{
 		if (!Invoker.IsValid())
 		{
-			UE_LOG(VoxelLog, Error, TEXT("Invalid invoker"));
+			UE_LOG(LogVoxel, Error, TEXT("Invalid invoker"));
 			return;
 		}
 		const FIntVector NewPosition = World->GlobalToLocal(Invoker.Get()->GetOwner()->GetActorLocation());
@@ -527,19 +527,19 @@ void FVoxelRender::UpdateChunk(FChunkOctree* Chunk, bool bAsync)
 	}
 }
 
-void FVoxelRender::UpdateChunksAtPosition(FIntVector Position, bool bAsync)
+void FVoxelRender::UpdateChunksAtPosition(const FIntVector& Position, bool bAsync)
 {
 	check(Data->IsInWorld(Position.X, Position.Y, Position.Z));
 
 	UpdateChunksOverlappingBox(FVoxelBox(Position, Position), bAsync);
 }
 
-void FVoxelRender::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
+void FVoxelRender::UpdateChunksOverlappingBox(const FVoxelBox& Box, bool bAsync)
 {
-	Box.Min -= FIntVector(2, 2, 2); // For normals
-	Box.Max += FIntVector(2, 2, 2); // For normals
+	FVoxelBox ExtendedBox(Box.Min - FIntVector(2, 2, 2), Box.Max + FIntVector(2, 2, 2));
+
 	std::deque<FChunkOctree*> OverlappingLeafs;
-	MainOctree->GetLeafsOverlappingBox(Box, OverlappingLeafs);
+	MainOctree->GetLeafsOverlappingBox(ExtendedBox, OverlappingLeafs);
 
 	for (auto Chunk : OverlappingLeafs)
 	{
@@ -550,7 +550,7 @@ void FVoxelRender::UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync)
 	{
 		if (Handler->IsValid())
 		{
-			Handler->UpdateInBox(Box);
+			Handler->UpdateInBox(ExtendedBox);
 		}
 		else
 		{
@@ -576,7 +576,7 @@ void FVoxelRender::ApplyUpdates()
 
 		/*if (!bSuccess)
 		{
-			UE_LOG(VoxelLog, Warning, TEXT("Chunk already updating"));
+			UE_LOG(LogVoxel, Warning, TEXT("Chunk already updating"));
 		}*/
 	}
 	ChunksToUpdate.Reset();
@@ -657,13 +657,13 @@ void FVoxelRender::RemoveFromQueues(UVoxelChunkComponent* Chunk)
 	}
 }
 
-FChunkOctree* FVoxelRender::GetChunkOctreeAt(FIntVector Position) const
+FChunkOctree* FVoxelRender::GetChunkOctreeAt(const FIntVector& Position) const
 {
 	check(Data->IsInWorld(Position.X, Position.Y, Position.Z));
 	return MainOctree->GetLeaf(Position);
 }
 
-FChunkOctree* FVoxelRender::GetAdjacentChunk(TransitionDirection Direction, FIntVector Position, int Size) const
+FChunkOctree* FVoxelRender::GetAdjacentChunk(TransitionDirection Direction, const FIntVector& Position, int Size) const
 {
 	const int S = Size;
 	TArray<FIntVector> L = {
@@ -687,7 +687,7 @@ FChunkOctree* FVoxelRender::GetAdjacentChunk(TransitionDirection Direction, FInt
 	}
 }
 
-int FVoxelRender::GetDepthAt(FIntVector Position) const
+int FVoxelRender::GetDepthAt(const FIntVector& Position) const
 {
 	return GetChunkOctreeAt(Position)->Depth;
 }
@@ -713,7 +713,7 @@ void FVoxelRender::Destroy()
 	InactiveChunks.resize(0);
 }
 
-FVector FVoxelRender::GetGlobalPosition(FIntVector LocalPosition)
+FVector FVoxelRender::GetGlobalPosition(const FIntVector& LocalPosition)
 {
 	return World->LocalToGlobal(LocalPosition) + ChunksParent->GetActorLocation() - World->GetActorLocation();
 }

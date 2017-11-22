@@ -3,16 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "VoxelSave.h"
-#include "VoxelWorldGenerator.h"
-#include "QueuedThreadPool.h"
-#include "Camera/PlayerCameraManager.h"
 #include "VoxelMaterial.h"
 #include "VoxelBox.h"
+#include "VoxelSave.h"
 #include "VoxelGrassType.h"
-#include "LandscapeGrassType.h"
 #include "VoxelNetworking.h"
+#include "VoxelWorldGenerator.h"
 #include "VoxelWorld.generated.h"
 
 using namespace UP;
@@ -25,8 +21,6 @@ class FVoxelData;
 class UVoxelInvokerComponent;
 class AVoxelWorldEditorInterface;
 
-DECLARE_LOG_CATEGORY_EXTERN(VoxelLog, Log, All);
-DECLARE_STATS_GROUP(TEXT("Voxels"), STATGROUP_Voxel, STATCAT_Advanced);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnClientConnection);
 
 /**
@@ -79,7 +73,7 @@ public:
 		bool IsCreated() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		int GetDepthAt(FIntVector Position) const;
+		int GetDepthAt(const FIntVector& Position) const;
 
 	// Size of a voxel in cm
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
@@ -95,13 +89,13 @@ public:
 	 * @return	Position in voxel space
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FIntVector GlobalToLocal(FVector Position) const;
+		FIntVector GlobalToLocal(const FVector& Position) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FVector LocalToGlobal(FIntVector Position) const;
+		FVector LocalToGlobal(const FIntVector& Position) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		TArray<FIntVector> GetNeighboringPositions(FVector GlobalPosition);
+		TArray<FIntVector> GetNeighboringPositions(const FVector& GlobalPosition);
 
 	/**
 	 * Add chunk to update queue that will be processed at the end of the frame
@@ -109,10 +103,10 @@ public:
 	 * @param	bAsync		Async update?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateChunksAtPosition(FIntVector Position, bool bAsync);
+		void UpdateChunksAtPosition(const FIntVector& Position, bool bAsync);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void UpdateChunksOverlappingBox(FVoxelBox Box, bool bAsync);
+		void UpdateChunksOverlappingBox(const FVoxelBox& Box, bool bAsync);
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void UpdateAll(bool bAsync);
@@ -123,7 +117,7 @@ public:
 	 * @return	IsInWorld?
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		bool IsInWorld(FIntVector Position) const;
+		bool IsInWorld(const FIntVector& Position) const;
 
 	/**
 	 * Get value at position
@@ -131,13 +125,13 @@ public:
 	 * @return	Value at position
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		float GetValue(FIntVector Position) const;
+		float GetValue(const FIntVector& Position) const;
 	/**
 	 * Get material at position
 	 * @param	Position	Position in voxel space
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		FVoxelMaterial GetMaterial(FIntVector Position) const;
+		FVoxelMaterial GetMaterial(const FIntVector& Position) const;
 
 	/**
 	 * Set value at position
@@ -145,14 +139,14 @@ public:
 	 * @param	Value		Value to set
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetValue(FIntVector Position, float Value);
+		void SetValue(const FIntVector& Position, float Value);
 	/**
 	 * Set material at position
 	 * @param	Position	Position in voxel space
 	 * @param	Material	FVoxelMaterial
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SetMaterial(FIntVector Position, FVoxelMaterial Material);
+		void SetMaterial(const FIntVector& Position, const FVoxelMaterial& Material);
 
 	/**
 	 * Get array to save world
@@ -166,7 +160,7 @@ public:
 	 * @param	bReset	Reset existing world? Set to false only if current world is unmodified
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void LoadFromSave(FVoxelWorldSave Save, bool bReset = true);
+		void LoadFromSave(const FVoxelWorldSave& Save, bool bReset = true);
 
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")

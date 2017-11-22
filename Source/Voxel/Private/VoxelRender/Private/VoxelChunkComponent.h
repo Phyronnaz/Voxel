@@ -3,11 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "VoxelThread.h"
 #include "VoxelProceduralMeshComponent.h"
 #include "TransitionDirection.h"
-#include "LandscapeGrassType.h"
-#include "VoxelThread.h"
 #include "VoxelChunkComponent.generated.h"
 
 class FVoxelRender;
@@ -61,7 +59,7 @@ public:
 	/**
 	* Copy Task section to PrimaryMesh section
 	*/
-	void OnMeshComplete(FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask);
+	void OnMeshComplete(const FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask);
 
 	void ApplyNewMesh();
 

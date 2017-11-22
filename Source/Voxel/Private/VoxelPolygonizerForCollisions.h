@@ -6,14 +6,13 @@
 
 #define CHUNKSIZE_FC 18
 
-class FValueOctree;
 class FVoxelData;
 struct FVoxelMaterial;
 
 class FVoxelPolygonizerForCollisions
 {
 public:
-	FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition, bool bEnableRender);
+	FVoxelPolygonizerForCollisions(FVoxelData* Data, const FIntVector& ChunkPosition, bool bEnableRender);
 
 	void CreateSection(FVoxelProcMeshSection& OutSection);
 

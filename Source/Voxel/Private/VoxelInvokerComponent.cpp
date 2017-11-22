@@ -1,10 +1,8 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelInvokerComponent.h"
-#include "VoxelPrivatePCH.h"
-#include "Components/PrimitiveComponent.h"
-#include "Engine.h"
-
+#include "VoxelPrivate.h"
+#include "DrawDebugHelpers.h"
 
 UVoxelInvokerComponent::UVoxelInvokerComponent()
 	: bNeedUpdate(true)
@@ -37,7 +35,7 @@ void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 			if (FoundActors.Num() == 0)
 			{
-				UE_LOG(VoxelLog, Warning, TEXT("No world found"));
+				UE_LOG(LogVoxel, Warning, TEXT("No world found"));
 			}
 			else
 			{

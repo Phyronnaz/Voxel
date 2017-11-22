@@ -1,8 +1,8 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelAssetWorldGenerator.h"
+#include "VoxelPrivate.h"
 #include "FlatWorldGenerator.h"
-#include "VoxelPrivatePCH.h"
 
 UVoxelAssetWorldGenerator::UVoxelAssetWorldGenerator()
 	: InstancedWorldGenerator(nullptr)
@@ -109,7 +109,7 @@ void UVoxelAssetWorldGenerator::CreateGeneratorAndDecompressedAsset(const float 
 	InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), DefaultWorldGenerator);
 	if (InstancedWorldGenerator == nullptr)
 	{
-		UE_LOG(VoxelLog, Error, TEXT("VoxelAssetWorldGenerator: Invalid world generator"));
+		UE_LOG(LogVoxel, Error, TEXT("VoxelAssetWorldGenerator: Invalid world generator"));
 		InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), UFlatWorldGenerator::StaticClass());
 	}
 
@@ -123,6 +123,6 @@ void UVoxelAssetWorldGenerator::CreateGeneratorAndDecompressedAsset(const float 
 	{
 		Bounds.Min = FIntVector(2, 2, 2);
 		Bounds.Max = FIntVector(-2, -2, -2);
-		UE_LOG(VoxelLog, Error, TEXT("VoxelAssetWorldGenerator: Invalid asset"));
+		UE_LOG(LogVoxel, Error, TEXT("VoxelAssetWorldGenerator: Invalid asset"));
 	}
 }

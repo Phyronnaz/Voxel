@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
-#include <list>
+#include <deque>
 
 class FValueOctree;
-class IVoxelWorldGenerator;
+class UVoxelWorldGenerator;
+class FEvent;
 
 /**
- * Class that handle voxel data. Mainly an interface to ValueOctree
+ * Class that handle voxel data. Mainly an interface to FValueOctree
  */
 class FVoxelData
 {
@@ -94,7 +95,7 @@ public:
 	 * @param	World		VoxelWorld
 	 * @param	bReset		Reset all chunks?
 	 */
-	void LoadFromSaveAndGetModifiedPositions(FVoxelWorldSave& Save, std::forward_list<FIntVector>& OutModifiedPositions, bool bReset);
+	void LoadFromSaveAndGetModifiedPositions(const FVoxelWorldSave& Save, std::deque<FIntVector>& OutModifiedPositions, bool bReset);
 
 	/**
 	 * Get sliced diff arrays to allow network transmission

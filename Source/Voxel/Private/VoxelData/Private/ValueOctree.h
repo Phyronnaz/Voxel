@@ -1,13 +1,13 @@
+// Copyright 2017 Phyronnaz
+
 #pragma once
+
 #include "CoreMinimal.h"
 #include "Octree.h"
 #include "VoxelSave.h"
-#include <list>
-#include <forward_list>
+#include <deque>
 
-class FVoxelData;
-class IVoxelWorldGenerator;
-struct FVoxelChunkSave;
+class UVoxelWorldGenerator;
 
 /**
  * Octree that holds modified values & colors
@@ -55,7 +55,7 @@ public:
 	 * Load chunks from SaveArray
 	 * @param	SaveArray	Array to load chunks from
 	 */
-	void LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>& Save, std::forward_list<FIntVector>& OutModifiedPositions);
+	void LoadFromSaveAndGetModifiedPositions(std::deque<FVoxelChunkSave>& Save, std::deque<FIntVector>& OutModifiedPositions);
 
 	/**
 	 * Add values that have changed since last network sync to diff arrays
@@ -83,7 +83,7 @@ public:
 	 * Queue update of dirty chunks
 	 * @param	World	Voxel world
 	 */
-	void GetDirtyChunksPositions(std::forward_list<FIntVector>& OutPositions);
+	void GetDirtyChunksPositions(std::deque<FIntVector>& OutPositions);
 
 private:
 	/*

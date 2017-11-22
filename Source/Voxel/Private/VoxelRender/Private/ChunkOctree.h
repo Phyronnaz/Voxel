@@ -1,4 +1,7 @@
+// Copyright 2017 Phyronnaz
+
 #pragma once
+
 #include "CoreMinimal.h"
 #include "Octree.h"
 #include "VoxelBox.h"
@@ -35,7 +38,7 @@ public:
 	 * @param	PointPosition	Position in voxel space. Must be contained in this octree
 	 * @return	Leaf chunk at PointPosition
 	 */
-	FChunkOctree* GetLeaf(FIntVector PointPosition);
+	FChunkOctree* GetLeaf(const FIntVector& PointPosition);
 
 	/**
 	 * Get the VoxelChunk of this
@@ -48,9 +51,9 @@ public:
 	* @param	PointPosition	Position in voxel space. Must be contained in this octree
 	* @return	Direct child in which PointPosition is contained
 	*/
-	FChunkOctree* GetChild(FIntVector PointPosition);
+	FChunkOctree* GetChild(const FIntVector& PointPosition);
 
-	void GetLeafsOverlappingBox(FVoxelBox Box, std::deque<FChunkOctree*>& Octrees);
+	void GetLeafsOverlappingBox(const FVoxelBox& Box, std::deque<FChunkOctree*>& Octrees);
 
 private:
 	/*
@@ -88,8 +91,3 @@ private:
 	 */
 	void DeleteChilds();
 };
-
-inline uint64 GetTypeHash(FChunkOctree ChunkOctree)
-{
-	return GetTypeHash(static_cast<FOctree>(ChunkOctree));
-}

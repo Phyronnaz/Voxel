@@ -1,8 +1,8 @@
+// Copyright 2017 Phyronnaz
+
 #include "VoxelPolygonizer.h"
-#include "VoxelPrivatePCH.h"
 #include "Transvoxel.h"
 #include "VoxelData.h"
-#include "VoxelData/Private/ValueOctree.h"
 #include "VoxelMaterial.h"
 #include <deque>
 
@@ -16,7 +16,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ GetValueAndColor"), STAT_GETVALUEAND
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Get2DValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ AmbientOcclusion"), STAT_AMBIENT_OCCLUSION, STATGROUP_Voxel);
 
-FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount)
+FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, const FIntVector& ChunkPosition, const TArray<bool, TFixedAllocator<6>>& ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount)
 	: Depth(Depth)
 	, Data(Data)
 	, ChunkPosition(ChunkPosition)
@@ -1300,7 +1300,7 @@ void FVoxelPolygonizer::Local2DToGlobal(int Size, TransitionDirection Direction,
 }
 
 
-FVector FVoxelPolygonizer::GetTranslated(const FVector Vertex, const FVector Normal)
+FVector FVoxelPolygonizer::GetTranslated(const FVector& Vertex, const FVector& Normal)
 {
 	double DeltaX = 0;
 	double DeltaY = 0;

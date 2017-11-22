@@ -1,3 +1,5 @@
+// Copyright 2017 Phyronnaz
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -6,14 +8,13 @@
 
 #define CHUNKSIZE 16
 
-class FValueOctree;
 class FVoxelData;
 struct FVoxelMaterial;
 
 class FVoxelPolygonizer
 {
 public:
-	FVoxelPolygonizer(int Depth, FVoxelData* Data, FIntVector ChunkPosition, TArray<bool, TFixedAllocator<6>> ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount);
+	FVoxelPolygonizer(int Depth, FVoxelData* Data, const FIntVector& ChunkPosition, const TArray<bool, TFixedAllocator<6>>& ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount);
 
 	void CreateSection(FVoxelProcMeshSection& OutSection);
 
@@ -72,5 +73,5 @@ private:
 	FORCEINLINE void GlobalToLocal2D(int Size, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ);
 	FORCEINLINE void Local2DToGlobal(int Size, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ);
 
-	FORCEINLINE FVector GetTranslated(const FVector Vertex, const FVector Normal);
+	FORCEINLINE FVector GetTranslated(const FVector& Vertex, const FVector& Normal);
 };

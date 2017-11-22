@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
+#include "VoxelBox.h"
 #include "VoxelAsset.h"
+#include "BufferArchive.h"
+#include "MemoryReader.h"
 #include "VoxelLandscapeAsset.generated.h"
 
 // Center: bottom center

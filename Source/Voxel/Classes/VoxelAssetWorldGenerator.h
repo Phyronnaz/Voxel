@@ -3,9 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VoxelDataAsset.h"
+#include "VoxelMaterial.h"
+#include "VoxelBox.h"
 #include "VoxelWorldGenerator.h"
-#include "SubclassOf.h"
+#include "VoxelAsset.h"
 #include "VoxelAssetWorldGenerator.generated.h"
 
 // TODO: UBoundedVoxelWorldGenerator

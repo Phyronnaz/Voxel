@@ -1,8 +1,7 @@
+// Copyright 2017 Phyronnaz
+
 #include "ValueOctree.h"
-#include "VoxelPrivatePCH.h"
-#include "VoxelData.h"
 #include "VoxelWorldGenerator.h"
-#include "GenericPlatformProcess.h"
 
 FValueOctree::FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id, bool bMultiplayer)
 	: FOctree(Position, Depth, Id)
@@ -434,7 +433,7 @@ void FValueOctree::AddDirtyChunksToSaveList(std::deque<TSharedRef<FVoxelChunkSav
 	}
 }
 
-void FValueOctree::LoadFromSaveAndGetModifiedPositions(std::list<FVoxelChunkSave>& Save, std::forward_list<FIntVector>& OutModifiedPositions)
+void FValueOctree::LoadFromSaveAndGetModifiedPositions(std::deque<FVoxelChunkSave>& Save, std::deque<FIntVector>& OutModifiedPositions)
 {
 	if (Save.empty())
 	{
@@ -659,7 +658,7 @@ FValueOctree* FValueOctree::GetLeaf(int X, int Y, int Z)
 	return Ptr;
 }
 
-void FValueOctree::GetDirtyChunksPositions(std::forward_list<FIntVector>& OutPositions)
+void FValueOctree::GetDirtyChunksPositions(std::deque<FIntVector>& OutPositions)
 {
 	if (IsDirty())
 	{

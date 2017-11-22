@@ -1,7 +1,6 @@
-#pragma once
+// Copyright 2017 Phyronnaz
 
 #include "VoxelSave.h"
-#include "VoxelPrivatePCH.h"
 #include "BufferArchive.h"
 #include "ArchiveSaveCompressedProxy.h"
 #include "ArchiveLoadCompressedProxy.h"
@@ -41,7 +40,7 @@ FVoxelWorldSave::FVoxelWorldSave()
 
 }
 
-void FVoxelWorldSave::Init(int NewDepth, std::deque<TSharedRef<FVoxelChunkSave>> ChunksList)
+void FVoxelWorldSave::Init(int NewDepth, const std::deque<TSharedRef<FVoxelChunkSave>>& ChunksList)
 {
 	Depth = NewDepth;
 
@@ -63,9 +62,9 @@ void FVoxelWorldSave::Init(int NewDepth, std::deque<TSharedRef<FVoxelChunkSave>>
 	Compressor.Flush();
 }
 
-std::list<FVoxelChunkSave> FVoxelWorldSave::GetChunksList()
+std::deque<FVoxelChunkSave> FVoxelWorldSave::GetChunksList() const
 {
-	std::list<FVoxelChunkSave> ChunksList;
+	std::deque<FVoxelChunkSave> ChunksList;
 
 	FArchiveLoadCompressedProxy Decompressor = FArchiveLoadCompressedProxy(Data, ECompressionFlags::COMPRESS_ZLIB);
 

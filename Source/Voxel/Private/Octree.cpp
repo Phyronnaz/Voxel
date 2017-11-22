@@ -1,5 +1,6 @@
+// Copyright 2017 Phyronnaz
+
 #include "Octree.h"
-#include "VoxelPrivatePCH.h"
 
 FOctree::FOctree(FIntVector Position, uint8 Depth, uint64 Id /*= -1*/) : Position(Position), Depth(Depth), Id(Id), bHasChilds(false)
 {

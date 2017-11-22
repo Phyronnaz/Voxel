@@ -1,7 +1,6 @@
 // Copyright 2017 Phyronnaz
 
 #include "EmptyWorldGenerator.h"
-#include "VoxelPrivatePCH.h"
 
 void UEmptyWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {

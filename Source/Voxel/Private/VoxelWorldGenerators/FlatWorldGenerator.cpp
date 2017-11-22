@@ -1,8 +1,6 @@
 // Copyright 2017 Phyronnaz
 
 #include "FlatWorldGenerator.h"
-#include "VoxelPrivatePCH.h"
-#include "VoxelMaterial.h"
 
 UFlatWorldGenerator::UFlatWorldGenerator()
 	: TerrainHeight(0)

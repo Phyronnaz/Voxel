@@ -1,8 +1,8 @@
+// Copyright 2017 Phyronnaz
+
 #include "VoxelPolygonizerForCollisions.h"
-#include "VoxelPrivatePCH.h"
 #include "Transvoxel.h"
 #include "VoxelData.h"
-#include "VoxelData/Private/ValueOctree.h"
 #include "VoxelMaterial.h"
 #include <deque>
 
@@ -10,7 +10,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizerForCollisions ~ Main Iter"), STAT_MAIN_
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizerForCollisions ~ CreateSection"), STAT_CREATE_SECTION_FC, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizerForCollisions ~ Cache"), STAT_CACHE_FC, STATGROUP_Voxel);
 
-FVoxelPolygonizerForCollisions::FVoxelPolygonizerForCollisions(FVoxelData* Data, FIntVector ChunkPosition, bool bEnableRender)
+FVoxelPolygonizerForCollisions::FVoxelPolygonizerForCollisions(FVoxelData* Data, const FIntVector& ChunkPosition, bool bEnableRender)
 	: Data(Data)
 	, ChunkPosition(ChunkPosition)
 	, bEnableRender(bEnableRender)

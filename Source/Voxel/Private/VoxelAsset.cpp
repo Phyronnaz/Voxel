@@ -2,7 +2,6 @@
 
 #pragma once
 #include "VoxelAsset.h"
-#include "VoxelPrivatePCH.h"
 
 #include "ArchiveSaveCompressedProxy.h"
 #include "ArchiveLoadCompressedProxy.h"

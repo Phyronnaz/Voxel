@@ -1,8 +1,6 @@
 // Copyright 2017 Phyronnaz
 
-#pragma once
 #include "VoxelDataAsset.h"
-#include "VoxelPrivatePCH.h"
 
 
 UVoxelDataAsset::UVoxelDataAsset(const FObjectInitializer& ObjectInitializer)

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "VoxelMaterial.h"
 #include "VoxelWorldGenerator.h"
 #include "FastNoise.h"
 #include "FastNoiseSIMD.h"

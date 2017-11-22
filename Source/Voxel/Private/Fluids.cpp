@@ -1,5 +1,6 @@
+// Copyright 2017 Phyronnaz
+
 #include "Fluids.h"
-#include "VoxelPrivatePCH.h"
 
 // From https://github.com/BlainMaguire/3dfluid
 

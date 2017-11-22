@@ -1,15 +1,6 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelLandscapeAsset.h"
-#include "LandscapeComponent.h"
-#include "VoxelPrivatePCH.h"
-#include "Engine/World.h"
-#include "BufferArchive.h"
-#include "ArchiveSaveCompressedProxy.h"
-#include "ArchiveLoadCompressedProxy.h"
-#include "MemoryReader.h"
-#include "Engine/Texture2D.h"
-
 
 UVoxelLandscapeAsset::UVoxelLandscapeAsset(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

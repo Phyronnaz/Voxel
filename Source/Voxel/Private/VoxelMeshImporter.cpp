@@ -1,8 +1,6 @@
 // Copyright 2017 Phyronnaz
 
-#pragma once
 #include "VoxelMeshImporter.h"
-#include "VoxelPrivatePCH.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "DrawDebugHelpers.h"
@@ -10,7 +8,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 
-#include <forward_list>
+#include <deque>
 #include "basetsd.h"
 
 #define VOXELIZER_IMPLEMENTATION
@@ -108,7 +106,7 @@ void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 	vx_mesh_free(mesh);
 
 
-	std::forward_list<FIntVector> Stack;
+	std::deque<FIntVector> Stack;
 	FVector PointInsideTheMesh = GetTransform().InverseTransformPosition(ActorInsideTheMesh->GetActorLocation());
 	Stack.push_front(FIntVector(PointInsideTheMesh.X - MinX, PointInsideTheMesh.Y - MinY, PointInsideTheMesh.Z - MinZ));
 

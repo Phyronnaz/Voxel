@@ -1,20 +1,15 @@
 // Copyright 2017 Phyronnaz
 
 #include "VoxelChunkComponent.h"
-#include "VoxelPrivatePCH.h"
-#include "ProceduralMeshComponent.h"
-#include "Misc/IQueuedWork.h"
-#include "AI/Navigation/NavigationSystem.h"
+#include "VoxelPrivate.h"
 #include "VoxelRender.h"
-#include "Engine.h"
-#include "Camera/PlayerCameraManager.h"
-#include "InstancedStaticMesh.h"
-#include "Kismet/KismetMathLibrary.h"
 #include "ChunkOctree.h"
+#include "VoxelPolygonizer.h"
+#include "InstancedStaticMesh.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
-#include "VoxelPolygonizer.h"
 #include "Components/PrimitiveComponent.h"
+#include "AI/Navigation/NavigationSystem.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
@@ -202,7 +197,7 @@ void UVoxelChunkComponent::Delete()
 	CurrentOctree = nullptr;
 }
 
-void UVoxelChunkComponent::OnMeshComplete(FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask)
+void UVoxelChunkComponent::OnMeshComplete(const FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask)
 {
 	if (Render)
 	{
@@ -223,7 +218,7 @@ void UVoxelChunkComponent::OnMeshComplete(FVoxelProcMeshSection& InSection, FAsy
 		}
 		else
 		{
-			UE_LOG(VoxelLog, Warning, TEXT("Invalid FAsyncPolygonizerTask"));
+			UE_LOG(LogVoxel, Warning, TEXT("Invalid FAsyncPolygonizerTask"));
 		}
 	}
 }

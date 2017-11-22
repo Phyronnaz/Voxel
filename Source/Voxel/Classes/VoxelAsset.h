@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
+#include "VoxelBox.h"
 #include "BufferArchive.h"
 #include "MemoryReader.h"
-#include "VoxelBox.h"
 #include "VoxelAsset.generated.h"
 
 enum VOXEL_API EVoxelValueType : uint8
