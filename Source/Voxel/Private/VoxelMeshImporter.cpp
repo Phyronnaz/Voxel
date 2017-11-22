@@ -5,7 +5,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "DrawDebugHelpers.h"
 
-#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "KismetProceduralMeshLibrary.h"
 
 #include <deque>
@@ -18,20 +18,29 @@
 
 AVoxelMeshImporter::AVoxelMeshImporter()
 	: MeshVoxelSize(10)
-	, HalfFinalVoxelSizeDivisor(1)
+	, UpscalingFactor(2)
 {
-
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
+	RootComponent = MeshComponent;
 };
 
 void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 {
+	check(StaticMesh);
+
+	StaticMesh->bAllowCPUAccess = true;
+
 	TArray<FVector> Vertices;
 	TArray<int32> Triangles;
 	TArray<FVector> Normals;
 	TArray<FVector2D> UVs;
 	TArray<FProcMeshTangent> Tangents;
-	UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(StaticMeshComponent->GetStaticMesh(), 0, 0, Vertices, Triangles, Normals, UVs, Tangents);
+	UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(StaticMesh, 0, 0, Vertices, Triangles, Normals, UVs, Tangents);
 
+	for (auto& Vertice : Vertices)
+	{
+		Vertice = GetTransform().TransformPosition(Vertice);
+	}
 
 	vx_mesh_t* mesh;
 	vx_mesh_t* result;
@@ -105,36 +114,43 @@ void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 	vx_mesh_free(result);
 	vx_mesh_free(mesh);
 
-
-	std::deque<FIntVector> Stack;
-	FVector PointInsideTheMesh = GetTransform().InverseTransformPosition(ActorInsideTheMesh->GetActorLocation());
-	Stack.push_front(FIntVector(PointInsideTheMesh.X - MinX, PointInsideTheMesh.Y - MinY, PointInsideTheMesh.Z - MinZ));
-
-	while (!Stack.empty())
+	for (auto ActorInsideTheMesh : ActorsInsideTheMesh)
 	{
-		FIntVector V = Stack.front();
-		Stack.pop_front();
-
-		if (0 <= V.X && V.X < Size.X && 0 <= V.Y && V.Y < Size.Y && 0 <= V.Z && V.Z < Size.Z)
+		if (!ActorInsideTheMesh)
 		{
-			int Index = V.X + Size.X * V.Y + Size.X * Size.Y * V.Z;
+			continue;
+		}
 
-			if (!IsInside[Index])
+		std::deque<FIntVector> Stack;
+		FVector PointInsideTheMesh = ActorInsideTheMesh->GetActorLocation() / MeshVoxelSize;
+		Stack.push_front(FIntVector(PointInsideTheMesh.X - MinX, PointInsideTheMesh.Y - MinY, PointInsideTheMesh.Z - MinZ));
+
+		while (!Stack.empty())
+		{
+			FIntVector V = Stack.front();
+			Stack.pop_front();
+
+			if (0 <= V.X && V.X < Size.X && 0 <= V.Y && V.Y < Size.Y && 0 <= V.Z && V.Z < Size.Z)
 			{
-				IsInside[Index] = true;
+				int Index = V.X + Size.X * V.Y + Size.X * Size.Y * V.Z;
 
-				const TArray<FIntVector> Positions = {
-					FIntVector(-1, 0, 0),
-					FIntVector(1, 0, 0),
-					FIntVector(0, -1, 0),
-					FIntVector(0, 1, 0),
-					FIntVector(0, 0, -1),
-					FIntVector(0, 0, 1)
-				};
-
-				for (auto P : Positions)
+				if (!IsInside[Index])
 				{
-					Stack.push_front(V + P);
+					IsInside[Index] = true;
+
+					const TArray<FIntVector> Positions = {
+						FIntVector(-1, 0, 0),
+						FIntVector(1, 0, 0),
+						FIntVector(0, -1, 0),
+						FIntVector(0, 1, 0),
+						FIntVector(0, 0, -1),
+						FIntVector(0, 0, 1)
+					};
+
+					for (auto P : Positions)
+					{
+						Stack.push_front(V + P);
+					}
 				}
 			}
 		}
@@ -158,13 +174,11 @@ void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 		}
 	}
 
-	int FinalVoxelSizeDivisor = 2 * HalfFinalVoxelSizeDivisor;
-
 	FIntVector HalfSize =
 		FIntVector(
-			FMath::FloorToInt(Size.X / 2.0f / (float)FinalVoxelSizeDivisor),
-			FMath::FloorToInt(Size.Y / 2.0f / (float)FinalVoxelSizeDivisor),
-			FMath::FloorToInt(Size.Z / 2.0f / (float)FinalVoxelSizeDivisor)
+			FMath::FloorToInt(Size.X / 2.0f / (float)UpscalingFactor),
+			FMath::FloorToInt(Size.Y / 2.0f / (float)UpscalingFactor),
+			FMath::FloorToInt(Size.Z / 2.0f / (float)UpscalingFactor)
 		);
 
 	Asset.SetHalfSize(HalfSize.X, HalfSize.Y, HalfSize.Z);
@@ -177,15 +191,15 @@ void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 			{
 				int VoxelInsideCount = 0;
 				int TotalVoxelCount = 0;
-				for (int I = -FinalVoxelSizeDivisor / 2; I < FinalVoxelSizeDivisor / 2; I++)
+				for (int I = -UpscalingFactor / 2; I < UpscalingFactor / 2; I++)
 				{
-					for (int J = -FinalVoxelSizeDivisor / 2; J < FinalVoxelSizeDivisor / 2; J++)
+					for (int J = -UpscalingFactor / 2; J < UpscalingFactor / 2; J++)
 					{
-						for (int K = -FinalVoxelSizeDivisor / 2; K < FinalVoxelSizeDivisor / 2; K++)
+						for (int K = -UpscalingFactor / 2; K < UpscalingFactor / 2; K++)
 						{
-							int A = FinalVoxelSizeDivisor * (X + HalfSize.X) + I;
-							int B = FinalVoxelSizeDivisor * (Y + HalfSize.Y) + J;
-							int C = FinalVoxelSizeDivisor * (Z + HalfSize.Z) + K;
+							int A = UpscalingFactor * (X + HalfSize.X) + I;
+							int B = UpscalingFactor * (Y + HalfSize.Y) + J;
+							int C = UpscalingFactor * (Z + HalfSize.Z) + K;
 							if (0 <= A && A < Size.X && 0 <= B && B < Size.Y && 0 <= C && C < Size.Z)
 							{
 								int Index = A + Size.X * B + Size.X * Size.Y * C;
@@ -206,3 +220,14 @@ void AVoxelMeshImporter::ImportToAsset(FDecompressedVoxelDataAsset& Asset)
 		}
 	}
 }
+
+#if WITH_EDITOR
+void AVoxelMeshImporter::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	UpscalingFactor = (UpscalingFactor / 2) * 2;
+
+	MeshComponent->SetStaticMesh(StaticMesh);
+}
+#endif

@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "VoxelDataAsset.h"
+#include "Components/StaticMeshComponent.h"
 #include "VoxelMeshImporter.generated.h"
+
+class UStaticMesh;
 
 /**
  *
@@ -23,17 +26,21 @@ public:
 
 
 
-	UPROPERTY(EditAnywhere, Category = "Import configuration")
-		UStaticMeshComponent* StaticMeshComponent;
+	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"), Category = "Import configuration")
+		UStaticMesh* StaticMesh;
 
+	// Size of the voxels used to voxelize the mesh
 	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (ClampMin = "0", UIMin = "0"))
 		float MeshVoxelSize;
 
-	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (ClampMin = "1", UIMin = "1"))
-		int HalfFinalVoxelSizeDivisor;
 
+	// Number of voxels of MeshVoxelSize size per real voxel = UpscalingFactor ** 3
+	UPROPERTY(EditAnywhere, Category = "Import configuration", meta = (ClampMin = "2", UIMin = "2"))
+		int UpscalingFactor;
+
+	// One actor per part of the mesh
 	UPROPERTY(EditAnywhere, Category = "Import configuration")
-		AActor* ActorInsideTheMesh;
+		TArray<AActor*> ActorsInsideTheMesh;
 
 	UPROPERTY(EditAnywhere, Category = "Debug")
 		bool bDrawPoints;
@@ -41,4 +48,13 @@ public:
 	AVoxelMeshImporter();
 
 	void ImportToAsset(FDecompressedVoxelDataAsset& Asset);
+
+protected:
+#if WITH_EDITOR
+	void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
+private:
+	UPROPERTY()
+		UStaticMeshComponent* MeshComponent;
 };
