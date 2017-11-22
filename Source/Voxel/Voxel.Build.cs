@@ -10,7 +10,6 @@ namespace UnrealBuildTool.Rules
         public Voxel(ReadOnlyTargetRules Target) : base(Target)
         {
             PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-            bUseAVX = true;
             bEnforceIWYU = false;
 
             // Hack to include engine private folder

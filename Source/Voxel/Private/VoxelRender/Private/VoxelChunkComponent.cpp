@@ -11,6 +11,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "AI/Navigation/NavigationSystem.h"
 
+#include "Runtime/Launch/Resources/Version.h"
+
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ SetProcMeshSection"), STAT_SetProcMeshSection, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update"), STAT_Update, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelChunk ~ Update ~ Update neighbors"), STAT_UpdateUpdateNeighbors, STATGROUP_Voxel);
@@ -364,6 +366,7 @@ void UVoxelChunkComponent::ApplyNewFoliage()
 
 			FoliageComponents.Add(HierarchicalInstancedStaticMeshComponent);
 
+#if ENGINE_MINOR_VERSION == 17
 			if (!HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData.IsValid())
 			{
 				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(&Task.InstanceBuffer);
@@ -372,6 +375,17 @@ void UVoxelChunkComponent::ApplyNewFoliage()
 			{
 				HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData->UpdateFromPreallocatedData(HierarchicalInstancedStaticMeshComponent, Task.InstanceBuffer);
 			}
+#else
+			if (!HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData.IsValid())
+			{
+				HierarchicalInstancedStaticMeshComponent->InitPerInstanceRenderData(true, &Task.InstanceBuffer);
+			}
+			else
+			{
+				HierarchicalInstancedStaticMeshComponent->PerInstanceRenderData->UpdateFromPreallocatedData(HierarchicalInstancedStaticMeshComponent, Task.InstanceBuffer, false);
+			}
+#endif
+
 
 			HierarchicalInstancedStaticMeshComponent->AcceptPrebuiltTree(Task.ClusterTree, Task.OutOcclusionLayerNum);
 

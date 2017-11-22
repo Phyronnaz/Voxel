@@ -2,15 +2,15 @@
 
 #pragma once
 
-#include "SphericalPerlinNoiseWorldGenerator.h"
+#include "SphericalNoiseWorldGenerator.h"
 
-USphericalPerlinNoiseWorldGenerator::USphericalPerlinNoiseWorldGenerator()
+USphericalNoiseWorldGenerator::USphericalNoiseWorldGenerator()
 	: Noise()
 	, Radius(1000)
 {
 }
 
-void USphericalPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
+void USphericalNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
 	check(Start.X % Step == 0);
 	check(Start.Y % Step == 0);
@@ -138,11 +138,8 @@ void USphericalPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], 
 	}
 }
 
-void USphericalPerlinNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+void USphericalNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
-	NoiseSIMD = FastNoiseSIMD::NewFastNoiseSIMD();
-	NoiseSIMD->SetFrequency(0.02);
-
 	Noise.SetGradientPerturbAmp(45);
 	Noise.SetFrequency(0.02);
 };

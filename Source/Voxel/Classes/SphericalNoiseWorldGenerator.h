@@ -6,14 +6,13 @@
 #include "VoxelMaterial.h"
 #include "VoxelWorldGenerator.h"
 #include "FastNoise.h"
-#include "FastNoiseSIMD.h"
-#include "SphericalPerlinNoiseWorldGenerator.generated.h"
+#include "SphericalNoiseWorldGenerator.generated.h"
 
 /**
  *
  */
 UCLASS(Blueprintable)
-class VOXEL_API USphericalPerlinNoiseWorldGenerator : public UVoxelWorldGenerator
+class VOXEL_API USphericalNoiseWorldGenerator : public UVoxelWorldGenerator
 {
 	GENERATED_BODY()
 
@@ -24,12 +23,11 @@ public:
 	UPROPERTY(EditAnywhere)
 		bool InverseInsideOutside;
 
-	USphericalPerlinNoiseWorldGenerator();
+	USphericalNoiseWorldGenerator();
 
 	virtual void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const override;
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
 
 private:
 	FastNoise Noise;
-	FastNoiseSIMD* NoiseSIMD;
 };

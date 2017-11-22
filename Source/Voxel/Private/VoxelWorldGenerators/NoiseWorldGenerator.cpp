@@ -2,13 +2,14 @@
 
 #pragma once
 
-#include "PerlinNoiseWorldGenerator.h"
+#include "NoiseWorldGenerator.h"
 
-UPerlinNoiseWorldGenerator::UPerlinNoiseWorldGenerator() : Noise()
+UNoiseWorldGenerator::UNoiseWorldGenerator()
+	: Noise()
 {
 }
 
-void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
+void UNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const
 {
 	check(Start.X % Step == 0);
 	check(Start.Y % Step == 0);
@@ -58,9 +59,6 @@ void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMat
 	}
 	else
 	{
-		float* NoiseValuesSimplexFractalScale1000 = NoiseSIMD->GetSimplexFractalSet(Start.X / Step, Start.Y / Step, Start.Z / Step, Size.X, Size.Y, Size.Z, Step / 25.f);
-		float* NoiseValuesSimplexFractalScale100 = NoiseSIMD->GetSimplexFractalSet(Start.X / Step, Start.Y / Step, Start.Z / Step, Size.X, Size.Y, Size.Z, Step / 100.f);
-
 		for (int K = 0; K < Size.Z; K++)
 		{
 			const int Z = Start.Z + K * Step;
@@ -81,11 +79,9 @@ void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMat
 						float y = Y;
 						float z = Z;
 
-						//Density -= FMath::Clamp<float>(10000 * Noise.GetSimplexFractal(x / 1000, y / 1000), 1000, 10000) - 1000;
-						Density -= FMath::Clamp<float>(10000 * NoiseValuesSimplexFractalScale1000[NoiseIndex], 1000, 10000) - 1000;
+						Density -= FMath::Clamp<float>(10000 * Noise.GetSimplexFractal(x / 1000, y / 1000), 1000, 10000) - 1000;
 
-						//Density -= FMath::Clamp<float>(250 * Noise.GetSimplexFractal(x / 100, y / 100), 0, 250);
-						Density -= FMath::Clamp<float>(250 * NoiseValuesSimplexFractalScale100[NoiseIndex], 0, 250);
+						Density -= FMath::Clamp<float>(250 * Noise.GetSimplexFractal(x / 100, y / 100), 0, 250);
 					}
 
 					const float A = FMath::Lerp(0.25f, 2.f, FMath::Clamp(Z - 5.f, 0.f, 1.f));
@@ -156,16 +152,11 @@ void UPerlinNoiseWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMat
 				}
 			}
 		}
-		FastNoiseSIMD::FreeNoiseSet(NoiseValuesSimplexFractalScale1000);
-		FastNoiseSIMD::FreeNoiseSet(NoiseValuesSimplexFractalScale100);
 	}
 }
 
-void UPerlinNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
+void UNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 {
-	NoiseSIMD = FastNoiseSIMD::NewFastNoiseSIMD();
-	NoiseSIMD->SetFrequency(0.02);
-
 	Noise.SetGradientPerturbAmp(45);
 	Noise.SetFrequency(0.02);
 };

@@ -24,6 +24,8 @@
 #include "Templates/SharedPointer.h"
 #include "Toolkits/AssetEditorToolkit.h"
 
+#include "Runtime/Launch/Resources/Version.h"
+
 DEFINE_LOG_CATEGORY(VoxelEditorLog)
 
 FVoxelWorldDetails::FVoxelWorldDetails()
@@ -43,11 +45,18 @@ TSharedRef<IDetailCustomization> FVoxelWorldDetails::MakeInstance()
 
 void FVoxelWorldDetails::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
-	const TArray< TWeakObjectPtr<UObject> >& SelectedObjects = DetailLayout.GetDetailsView().GetSelectedObjects();
-
+#if ENGINE_MINOR_VERSION == 17
+	const TArray< TWeakObjectPtr<UObject>>& SelectedObjects = DetailLayout.GetDetailsView().GetSelectedObjects();
+#else
+	const TArray<TWeakObjectPtr<AActor>>& SelectedObjects = DetailLayout.GetDetailsView()->GetSelectedActors();
+#endif
 	for (int32 ObjectIndex = 0; ObjectIndex < SelectedObjects.Num(); ++ObjectIndex)
 	{
+#if ENGINE_MINOR_VERSION == 17
 		const TWeakObjectPtr<UObject>& CurrentObject = SelectedObjects[ObjectIndex];
+#else
+		const TWeakObjectPtr<AActor>& CurrentObject = SelectedObjects[ObjectIndex];
+#endif
 		if (CurrentObject.IsValid())
 		{
 			AVoxelWorld* CurrentCaptureActor = Cast<AVoxelWorld>(CurrentObject.Get());
