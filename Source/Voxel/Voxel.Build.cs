@@ -11,6 +11,7 @@ namespace UnrealBuildTool.Rules
         {
             PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
             bEnforceIWYU = false;
+            bUseAVX = true;
 
             // Hack to include engine private folder
             // Get the engine path. Ends with "Engine/"
