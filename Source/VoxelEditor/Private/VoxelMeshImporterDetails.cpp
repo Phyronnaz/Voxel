@@ -73,9 +73,15 @@ FReply FVoxelMeshImporterDetails::OnCreateFromMesh()
 {
 	if (MeshImporter.IsValid())
 	{
-		if (MeshImporter->StaticMeshComponent)
+		if (MeshImporter->StaticMesh)
 		{
 			// See \Engine\Source\Editor\UnrealEd\PrivateLevelEditorViewport.cpp:409
+
+			if (MeshImporter->FileName.IsEmpty())
+			{
+				FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Please enter a file name")));
+				return FReply::Handled();
+			}
 
 			FString NewPackageName = PackageTools::SanitizePackageName(TEXT("/Game/") + MeshImporter->SavePath.Path + TEXT("/") + MeshImporter->FileName);
 			UPackage* Package = CreatePackage(NULL, *NewPackageName);
@@ -126,7 +132,7 @@ FReply FVoxelMeshImporterDetails::OnCreateFromMesh()
 		}
 		else
 		{
-			if (!MeshImporter->StaticMeshComponent)
+			if (!MeshImporter->StaticMesh)
 			{
 				FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Invalid Mesh")));
 			}

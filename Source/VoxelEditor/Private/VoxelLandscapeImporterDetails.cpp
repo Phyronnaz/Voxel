@@ -80,6 +80,12 @@ FReply UVoxelLandscapeImporterDetails::OnCreateFromLandscape()
 {
 	if (LandscapeImporter->Landscape)
 	{
+		if (LandscapeImporter->FileName.IsEmpty())
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Please enter a file name")));
+			return FReply::Handled();
+		}
+
 		int MipLevel = 0;
 		int ComponentSize = 0;
 		int Count = 0;

@@ -78,6 +78,12 @@ FReply UVoxelSplineImporterDetails::OnCreateFromSplines()
 	{
 		// See \Engine\Source\Editor\UnrealEd\PrivateLevelEditorViewport.cpp:409
 
+		if (SplineImporter->FileName.IsEmpty())
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Please enter a file name")));
+			return FReply::Handled();
+		}
+
 		FString NewPackageName = PackageTools::SanitizePackageName(TEXT("/Game/") + SplineImporter->SavePath.Path + TEXT("/") + SplineImporter->FileName);
 		UPackage* Package = CreatePackage(NULL, *NewPackageName);
 
