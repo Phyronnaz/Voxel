@@ -2,7 +2,10 @@
 
 #include "VoxelInvokerComponent.h"
 #include "VoxelPrivate.h"
+#include "VoxelWorld.h"
 #include "DrawDebugHelpers.h"
+#include "GameFramework/Pawn.h"
+#include "Kismet/GameplayStatics.h"
 
 UVoxelInvokerComponent::UVoxelInvokerComponent()
 	: bNeedUpdate(true)
@@ -31,7 +34,7 @@ void UVoxelInvokerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 		if (true || GetNetMode() < ENetMode::NM_Client || (Cast<APawn>(GetOwner()) && Cast<APawn>(GetOwner())->Role == ROLE_AutonomousProxy))
 		{
 			TArray<AActor*> FoundActors;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
+			UGameplayStatics::GetAllActorsOfClass((UObject*)GetOwner()->GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
 
 			if (FoundActors.Num() == 0)
 			{

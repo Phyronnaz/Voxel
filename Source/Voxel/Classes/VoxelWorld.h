@@ -9,6 +9,8 @@
 #include "VoxelGrassType.h"
 #include "VoxelNetworking.h"
 #include "VoxelWorldGenerator.h"
+#include "GameFramework/Actor.h"
+#include "Templates/SubclassOf.h"
 #include "VoxelWorld.generated.h"
 
 using namespace UP;

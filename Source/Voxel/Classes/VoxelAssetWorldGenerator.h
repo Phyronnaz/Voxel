@@ -7,6 +7,7 @@
 #include "VoxelBox.h"
 #include "VoxelWorldGenerator.h"
 #include "VoxelAsset.h"
+#include "Templates/SubclassOf.h"
 #include "VoxelAssetWorldGenerator.generated.h"
 
 // TODO: UBoundedVoxelWorldGenerator

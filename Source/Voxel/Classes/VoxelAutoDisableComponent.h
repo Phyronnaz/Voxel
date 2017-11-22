@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Templates/SubclassOf.h"
+#include "Components/PrimitiveComponent.h"
 #include "VoxelAutoDisableComponent.generated.h"
 
 class AVoxelWorld;

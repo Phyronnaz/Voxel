@@ -44,7 +44,7 @@ void UVoxelAutoDisableComponent::TickComponent(float DeltaTime, ELevelTick TickT
 		if (!World && bAutoFindWorld)
 		{
 			TArray<AActor*> FoundActors;
-			UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
+			UGameplayStatics::GetAllActorsOfClass((UObject*)GetOwner()->GetWorld(), AVoxelWorld::StaticClass(), FoundActors);
 
 			if (FoundActors.Num() == 0)
 			{

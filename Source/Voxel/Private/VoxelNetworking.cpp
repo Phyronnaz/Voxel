@@ -6,6 +6,7 @@
 
 #include "ArchiveSaveCompressedProxy.h"
 #include "ArchiveLoadCompressedProxy.h"
+#include "Engine.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelNetworking ~ Receive data"), STAT_ReceiveData, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelNetworking ~ Send data"), STAT_SendData, STATGROUP_Voxel);
