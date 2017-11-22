@@ -2,13 +2,13 @@
 
 #include "VoxelAssetWorldGenerator.h"
 #include "VoxelPrivate.h"
-#include "FlatWorldGenerator.h"
+#include "EmptyWorldGenerator.h"
 
 UVoxelAssetWorldGenerator::UVoxelAssetWorldGenerator()
 	: InstancedWorldGenerator(nullptr)
 	, DecompressedAsset(nullptr)
 {
-	DefaultWorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UFlatWorldGenerator::StaticClass());
+	DefaultWorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UEmptyWorldGenerator::StaticClass());
 }
 
 UVoxelAssetWorldGenerator::~UVoxelAssetWorldGenerator()
@@ -106,11 +106,14 @@ void UVoxelAssetWorldGenerator::CreateGeneratorAndDecompressedAsset(const float 
 {
 	check(!InstancedWorldGenerator);
 
-	InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), DefaultWorldGenerator);
+	if (DefaultWorldGenerator)
+	{
+		InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), DefaultWorldGenerator);
+	}
 	if (InstancedWorldGenerator == nullptr)
 	{
 		UE_LOG(LogVoxel, Error, TEXT("VoxelAssetWorldGenerator: Invalid world generator"));
-		InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), UFlatWorldGenerator::StaticClass());
+		InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), UEmptyWorldGenerator::StaticClass());
 	}
 
 	bool bSuccess = Asset && Asset->GetDecompressedAsset(DecompressedAsset, VoxelSize);
