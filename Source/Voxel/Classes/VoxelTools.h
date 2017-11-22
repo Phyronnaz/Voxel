@@ -35,7 +35,7 @@ public:
 	 * @param	HardnessMultiplier	-HardnessMultiplier will be set inside the sphere and HardnessMultiplier outside
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
-		static void SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync = false, const float HardnessMultiplier = 1);
+		static void SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const float MaxDifferenceWhenSameSign = 0.1f, const bool bAsync = false, const float HardnessMultiplier = 1);
 
 	/**
 	* Set value to positive or negative in a specified box. Box is placed on its bottom side, relative to the supplied world space position.
@@ -117,11 +117,12 @@ public:
 	 * @param	World					Voxel world
 	 * @param	Asset					Asset to import
 	 * @param	Position				Position in world space
+	 * @param	bAdd					Add or remove?
 	 * @param	bForceUseOfAllVoxels	Set all the voxels to the asset values?
 	 * @param	bAsync					Update async?
 	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
-		static void ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, const FVector Position, const bool bPositionZIsBottom = true, const bool bForceUseOfAllVoxels = false, const bool bAsync = false);
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
+		static void ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, const FVector Position, const bool bAdd = true, const bool bPositionZIsBottom = true, const bool bForceUseOfAllVoxels = false, const bool bAsync = false);
 
 	/**
 	 * Get Voxel World from mouse world position and direction given by GetMouseWorldPositionAndDirection

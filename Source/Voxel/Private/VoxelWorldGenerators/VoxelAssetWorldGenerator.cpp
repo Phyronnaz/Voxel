@@ -50,8 +50,8 @@ void UVoxelAssetWorldGenerator::GetValuesAndMaterials(float Values[], FVoxelMate
 							else
 							{
 								float DefaultValue = InstancedWorldGenerator->GetValue(X, Y, Z);
-								if ((ValueType == UseValueIfSameSign && DefaultValue * AssetValue >= 0) ||
-									(ValueType == UseValueIfDifferentSign && DefaultValue * AssetValue <= 0))
+								if ((ValueType == UseValueIfSameSign && FVoxelType::HaveSameSign(DefaultValue, AssetValue)) ||
+									(ValueType == UseValueIfDifferentSign && !FVoxelType::HaveSameSign(DefaultValue, AssetValue)))
 								{
 									Values[Index] = AssetValue;
 								}

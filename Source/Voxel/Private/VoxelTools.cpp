@@ -25,7 +25,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, 
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
 
-void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const float MaxDifferenceWhenSameSign, const bool bAsync, const float HardnessMultiplier)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetValueSphere);
 
@@ -62,9 +62,32 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 						Value *= HardnessMultiplier;
 						Value *= (bAdd ? -1 : 1);
 
-						float OldValue = Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);						
+						float OldValue = Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);
 
-						if ((bAdd && (Value <= 0 || OldValue * Value >= 0)) || (!bAdd && (Value > 0 || OldValue * Value > 0)))
+						bool bValid;
+						if ((Value <= 0 && bAdd) || (Value > 0 && !bAdd))
+						{
+							bValid = true;
+						}
+						else
+						{
+							if (FVoxelType::HaveSameSign(OldValue, Value))
+							{
+								if (FMath::Abs(OldValue) > 1 - KINDA_SMALL_NUMBER)
+								{
+									bValid = true;
+								}
+								else
+								{
+									bValid = FMath::Abs(OldValue - Value) < MaxDifferenceWhenSameSign;
+								}
+							}
+							else
+							{
+								bValid = false;
+							}
+						}
+						if (bValid)
 						{
 							//DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
 							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);
@@ -145,7 +168,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 					const float Distance = FVector(X, Y, Z).Size();
 
 
-					FVoxelMaterial Material = Data->GetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);					
+					FVoxelMaterial Material = Data->GetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);
 
 					if (Distance < Radius + FadeDistance + VoxelDiagonalLength)
 					{
@@ -451,7 +474,7 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector StartPosition, FVecto
 	}
 }
 
-void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Position, const bool bPositionZIsBottom, const bool bForceUseOfAllVoxels, const bool bAsync)
+void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Position, const bool bAdd, const bool bPositionZIsBottom, const bool bForceUseOfAllVoxels, const bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_ImportMesh);
 
@@ -490,7 +513,7 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 			{
 				for (int Z = Bounds.Min.Z; Z <= Bounds.Max.Z; Z++)
 				{
-					const float AssetValue = DecompressedAsset->GetValue(X, Y, Z);
+					const float AssetValue = (bAdd ? 1 : -1) * DecompressedAsset->GetValue(X, Y, Z);
 					const FVoxelMaterial AssetMaterial = DecompressedAsset->GetMaterial(X, Y, Z);
 					const FVoxelType VoxelType = DecompressedAsset->GetVoxelType(X, Y, Z);
 
@@ -516,10 +539,10 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 							NewValue = AssetValue;
 							break;
 						case UseValueIfSameSign:
-							NewValue = (AssetValue * OldValue >= 0) ? AssetValue : OldValue;
+							NewValue = FVoxelType::HaveSameSign(OldValue, AssetValue) ? AssetValue : OldValue;
 							break;
 						case UseValueIfDifferentSign:
-							NewValue = (AssetValue * OldValue <= 0) ? AssetValue : OldValue;
+							NewValue = !FVoxelType::HaveSameSign(OldValue, AssetValue) ? AssetValue : OldValue;
 							break;
 						default:
 							NewValue = 0;

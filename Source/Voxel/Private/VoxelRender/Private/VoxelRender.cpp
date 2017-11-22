@@ -569,15 +569,16 @@ void FVoxelRender::ApplyUpdates()
 
 	for (auto& Chunk : ChunksToUpdate)
 	{
-		check(Chunk->GetVoxelChunk());
-
-		bool bAsync = !IdsOfChunksToUpdateSynchronously.Contains(Chunk->Id);
-		bool bSuccess = Chunk->GetVoxelChunk()->Update(bAsync);
-
-		/*if (!bSuccess)
+		if (Chunk->GetVoxelChunk())
 		{
-			UE_LOG(LogVoxel, Warning, TEXT("Chunk already updating"));
-		}*/
+			bool bAsync = !IdsOfChunksToUpdateSynchronously.Contains(Chunk->Id);
+			bool bSuccess = Chunk->GetVoxelChunk()->Update(bAsync);
+
+			/*if (!bSuccess)
+			{
+				UE_LOG(LogVoxel, Warning, TEXT("Chunk already updating"));
+			}*/
+		}
 	}
 	ChunksToUpdate.Reset();
 	IdsOfChunksToUpdateSynchronously.Reset();

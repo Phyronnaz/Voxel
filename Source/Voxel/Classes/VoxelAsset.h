@@ -14,10 +14,10 @@ enum VOXEL_API EVoxelValueType : uint8
 	// Value should be used
 	UseValue,
 
-	// Use if A * B >= 0
+	// Use if HaveSameSign
 	UseValueIfSameSign,
 
-	// Use if A * B <= 0
+	// Use if !HaveSameSign
 	UseValueIfDifferentSign,
 
 	// Value is not valid
@@ -52,6 +52,12 @@ struct VOXEL_API FVoxelType
 	FORCEINLINE EVoxelMaterialType GetMaterialType() const
 	{
 		return (EVoxelMaterialType)(Value >> 4);
+	}
+
+	FORCEINLINE static bool HaveSameSign(const float A, const float B)
+	{
+		// A > 0: see VoxelPolygonizer convention on positive values
+		return (A > 0 && B > 0) || (A <= 0 && B <= 0);
 	}
 };
 
