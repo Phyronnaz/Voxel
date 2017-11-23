@@ -466,8 +466,12 @@ void AVoxelWorld::CreateWorld()
 
 	if (!InstancedWorldGenerator || InstancedWorldGenerator->GetClass() != WorldGenerator->GetClass())
 	{
-		// Create generator
-		InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), WorldGenerator);
+		InstancedWorldGenerator = nullptr;
+		if (WorldGenerator)
+		{
+			// Create generator
+			InstancedWorldGenerator = NewObject<UVoxelWorldGenerator>((UObject*)GetTransientPackage(), WorldGenerator);
+		}
 		if (InstancedWorldGenerator == nullptr)
 		{
 			UE_LOG(LogVoxel, Error, TEXT("Invalid world generator"));
