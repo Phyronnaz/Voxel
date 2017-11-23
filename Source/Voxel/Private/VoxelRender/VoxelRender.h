@@ -13,7 +13,6 @@ class FVoxelData;
 class FChunkOctree;
 class UVoxelChunkComponent;
 class FCollisionMeshHandler;
-class FAsyncPolygonizerTask;
 class UVoxelInvokerComponent;
 
 struct FChunkToDelete
@@ -25,26 +24,6 @@ struct FChunkToDelete
 		: Chunk(Chunk)
 		, TimeLeft(TimeLeft)
 	{
-	};
-};
-
-class FAsyncCollisionTask : public FNonAbandonableTask
-{
-public:
-	// Output
-	FVoxelProcMeshSection Section;
-
-	const bool bEnableRender;
-	const FIntVector ChunkPosition;
-	FVoxelData* const Data;
-
-	FAsyncCollisionTask(FVoxelData* Data, FIntVector ChunkPosition, bool bEnableRender);
-
-	void DoWork();
-
-	FORCEINLINE TStatId GetStatId() const
-	{
-		RETURN_QUICK_DECLARE_CYCLE_STAT(FAsyncFoliageTask, STATGROUP_ThreadPoolAsyncTasks);
 	};
 };
 
@@ -60,6 +39,7 @@ public:
 
 	FQueuedThreadPool* const MeshThreadPool;
 	FQueuedThreadPool* const FoliageThreadPool;
+	FQueuedThreadPool* const CollisionThreadPool;
 
 
 	FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData* Data, uint32 MeshThreadCount, uint32 FoliageThreadCount);
