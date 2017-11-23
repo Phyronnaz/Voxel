@@ -244,6 +244,7 @@ void AVoxelWorld::StartServer(const FString& Ip, const int32 Port)
 	else
 	{
 		TcpServer.StartTcpServer(Ip, Port);
+		UE_LOG(LogVoxel, Log, TEXT("Server started"));
 	}
 }
 
@@ -256,6 +257,7 @@ void AVoxelWorld::ConnectClient(const FString& Ip, const int32 Port)
 	else
 	{
 		TcpClient.ConnectTcpClient(Ip, Port);
+		UE_LOG(LogVoxel, Log, TEXT("Client started"));
 	}
 }
 
@@ -267,6 +269,7 @@ void AVoxelWorld::SendWorldToClients(bool bOnlyToNewConnections /*= true*/)
 	}
 	else
 	{
+		UE_LOG(LogVoxel, Log, TEXT("Sending world to clients"));
 		FVoxelWorldSave Save;
 		GetSave(Save);
 		TcpServer.SendSave(Save, bOnlyToNewConnections);

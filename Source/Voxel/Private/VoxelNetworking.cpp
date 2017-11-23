@@ -154,14 +154,23 @@ void FVoxelTcpClient::ReceiveSave(FVoxelWorldSave& OutSave)
 
 					int32 BytesRead = 0;
 					Socket->Recv(ReceivedData.GetData(), ReceivedData.Num(), BytesRead);
-					check(BytesRead == ExpectedSize);
+					bool bSuccess = BytesRead == ExpectedSize;
+					UE_LOG(LogTemp, Log, TEXT("Remote load: Bytes to receive: %d. Bytes received: %d. Success: %d"), ExpectedSize, BytesRead, bSuccess);
+					if (bSuccess)
+					{
 
-					ReceivedData << OutSave.Depth;
-					ReceivedData << OutSave.Data;
+						FMemoryReader Reader(ReceivedData);
+						Reader << OutSave.Depth;
+						Reader << OutSave.Data;
 
-					bNextUpdateIsRemoteLoad = false;
-					bExpectedSizeUpToDate = false;
-					UpdateExpectedSize();
+						bNextUpdateIsRemoteLoad = false;
+						bExpectedSizeUpToDate = false;
+						UpdateExpectedSize();
+					}
+					else
+					{
+						UE_LOG(LogTemp, Error, TEXT("Remote load: Fail"));
+					}
 				}
 			}
 		}
