@@ -10,6 +10,7 @@
 #include "VoxelData.h"
 #include "VoxelPart.h"
 #include "Fluids.h"
+#include "VoxelDataAsset.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetValueSphere"), STAT_SetValueSphere, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetMaterialSphere"), STAT_SetMaterialSphere, STATGROUP_Voxel);
@@ -527,7 +528,10 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 
 					if (bForceUseOfAllVoxels)
 					{
-						Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, AssetValue, AssetMaterial, LastOctree);
+						if (LIKELY(Data->IsInWorld(P.X + X, P.Y + Y, P.Z + Z)))
+						{
+							Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, AssetValue, AssetMaterial, LastOctree);
+						}
 					}
 					else if (VoxelType.GetValueType() != IgnoreValue || VoxelType.GetMaterialType() != IgnoreMaterial)
 					{
@@ -557,7 +561,10 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 							check(false);
 						}
 
-						Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, NewValue, NewMaterial, LastOctree);
+						if (LIKELY(Data->IsInWorld(P.X + X, P.Y + Y, P.Z + Z)))
+						{
+							Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, NewValue, NewMaterial, LastOctree);
+						}
 					}
 				}
 			}
@@ -967,4 +974,230 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 			Part->Init(CurrentData.Get(), World->GetVoxelMaterial(), World);
 		}
 	}
+}
+
+void UVoxelTools::TransformVoxelAsset(UVoxelAsset* InCompressedAsset, UVoxelAsset*& OutCompressedAsset, const FTransform& Transform)
+{
+	if (!InCompressedAsset)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("RotateVoxelAsset: Invalid Asset"));
+		return;
+	}
+
+	FDecompressedVoxelAsset* InAsset;
+	FDecompressedVoxelDataAsset OutAsset;
+	InCompressedAsset->GetDecompressedAsset(InAsset, 1);
+
+	// Compute new bounds
+	FIntVector Min = InAsset->GetBounds().Min;
+	FIntVector Max = InAsset->GetBounds().Max;
+
+	TArray<FIntVector> Corners = {
+		FIntVector(Min.X, Min.Y, Min.Z),
+		FIntVector(Max.X, Min.Y, Min.Z),
+		FIntVector(Min.X, Max.Y, Min.Z),
+		FIntVector(Max.X, Max.Y, Min.Z),
+		FIntVector(Min.X, Min.Y, Max.Z),
+		FIntVector(Max.X, Min.Y, Max.Z),
+		FIntVector(Min.X, Max.Y, Max.Z),
+		FIntVector(Max.X, Max.Y, Max.Z),
+	};
+
+	FIntVector NewMin = FIntVector(MAX_int32, MAX_int32, MAX_int32);
+	FIntVector NewMax = FIntVector(MIN_int32, MIN_int32, MIN_int32);
+
+	for (auto& Corner : Corners)
+	{
+		FVector NewPosition = Transform.TransformPosition((FVector)Corner);
+
+		NewMin.X = FMath::Min(NewMin.X, FMath::FloorToInt(NewPosition.X));
+		NewMin.Y = FMath::Min(NewMin.Y, FMath::FloorToInt(NewPosition.Y));
+		NewMin.Z = FMath::Min(NewMin.Z, FMath::FloorToInt(NewPosition.Z));
+
+		NewMax.X = FMath::Max(NewMax.X, FMath::CeilToInt(NewPosition.X));
+		NewMax.Y = FMath::Max(NewMax.Y, FMath::CeilToInt(NewPosition.Y));
+		NewMax.Z = FMath::Max(NewMax.Z, FMath::CeilToInt(NewPosition.Z));
+	}
+
+	OutAsset.SetHalfSize((NewMax.X - NewMin.X) / 2 + 1, (NewMax.Y - NewMin.Y) / 2 + 1, (NewMax.Z - NewMin.Z) / 2 + 1);
+
+	FVoxelBox OutBounds = OutAsset.GetBounds();
+	for (int X = OutBounds.Min.X; X <= OutBounds.Max.X; X++)
+	{
+		for (int Y = OutBounds.Min.Y; Y <= OutBounds.Max.Y; Y++)
+		{
+			for (int Z = OutBounds.Min.Z; Z <= OutBounds.Max.Z; Z++)
+			{
+				OutAsset.SetValue(X, Y, Z, 1);
+				OutAsset.SetMaterial(X, Y, Z, FVoxelMaterial());
+				OutAsset.SetVoxelType(X, Y, Z, FVoxelType(IgnoreValue, IgnoreMaterial));
+			}
+		}
+	}
+
+	FVoxelBox InBounds = InAsset->GetBounds();
+	for (int X = InBounds.Min.X; X <= InBounds.Max.X; X++)
+	{
+		for (int Y = InBounds.Min.Y; Y <= InBounds.Max.Y; Y++)
+		{
+			for (int Z = InBounds.Min.Z; Z <= InBounds.Max.Z; Z++)
+			{
+				FVector NewPosition = Transform.TransformPosition(FVector(X, Y, Z));
+				int NX = FMath::RoundToInt(NewPosition.X);
+				int NY = FMath::RoundToInt(NewPosition.Y);
+				int NZ = FMath::RoundToInt(NewPosition.Z);
+
+				if (OutBounds.IsInside(NX, NY, NZ))
+				{
+					OutAsset.SetValue(NX, NY, NZ, InAsset->GetValue(X, Y, Z));
+					OutAsset.SetMaterial(NX, NY, NZ, InAsset->GetMaterial(X, Y, Z));
+					OutAsset.SetVoxelType(NX, NY, NZ, InAsset->GetVoxelType(X, Y, Z));
+				}
+			}
+		}
+	}
+	OutCompressedAsset = NewObject<UVoxelDataAsset>();
+	((UVoxelDataAsset*)OutCompressedAsset)->InitFromAsset(&OutAsset);
+}
+
+void UVoxelTools::DownscaleAsset(UVoxelAsset* InCompressedAsset, UVoxelAsset*& OutCompressedAsset, const int HalfOfDownscalingFactor)
+{
+	if (!InCompressedAsset)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("DownscaleAsset: Invalid Asset"));
+		return;
+	}
+	if (HalfOfDownscalingFactor < 1)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("DownscaleAsset: HalfOfDownscalingFactor must be >= 1"));
+		return;
+	}
+
+	FDecompressedVoxelAsset* InAsset;
+	FDecompressedVoxelDataAsset OutAsset;
+	InCompressedAsset->GetDecompressedAsset(InAsset, 1);
+
+	FVoxelBox InBounds = InAsset->GetBounds();
+
+	const int DownscalingFactor = 2 * HalfOfDownscalingFactor;
+
+	FIntVector HalfSize =
+		FIntVector(
+			FMath::CeilToInt(FMath::Max(FMath::Abs(InBounds.Min.X), FMath::Abs(InBounds.Max.X)) / 2.0f / (float)DownscalingFactor),
+			FMath::CeilToInt(FMath::Max(FMath::Abs(InBounds.Min.Y), FMath::Abs(InBounds.Max.Y)) / 2.0f / (float)DownscalingFactor),
+			FMath::CeilToInt(FMath::Max(FMath::Abs(InBounds.Min.Z), FMath::Abs(InBounds.Max.Z)) / 2.0f / (float)DownscalingFactor)
+		);
+
+	OutAsset.SetHalfSize(HalfSize.X, HalfSize.Y, HalfSize.Z);
+
+	FVoxelBox OutBounds = OutAsset.GetBounds();
+	for (int X = OutBounds.Min.X; X <= OutBounds.Max.X; X++)
+	{
+		for (int Y = OutBounds.Min.Y; Y <= OutBounds.Max.Y; Y++)
+		{
+			for (int Z = OutBounds.Min.Z; Z <= OutBounds.Max.Z; Z++)
+			{
+				float TotalValue = 0;
+				int TotalVoxelCount = 0;
+				for (int I = -HalfOfDownscalingFactor; I <= HalfOfDownscalingFactor; I++)
+				{
+					for (int J = -HalfOfDownscalingFactor; J <= HalfOfDownscalingFactor; J++)
+					{
+						for (int K = -HalfOfDownscalingFactor; K <= HalfOfDownscalingFactor; K++)
+						{
+							int A = DownscalingFactor * (X - OutBounds.Min.X) + InBounds.Min.X + I;
+							int B = DownscalingFactor * (Y - OutBounds.Min.Y) + InBounds.Min.Y + J;
+							int C = DownscalingFactor * (Z - OutBounds.Min.Z) + InBounds.Min.Z + K;
+							if (InBounds.IsInside(A, B, C))
+							{
+								TotalVoxelCount++;
+								TotalValue += InAsset->GetValue(A, B, C);
+								// TODO: materials
+							}
+						}
+					}
+				}
+				float NewValue = TotalValue / (float)TotalVoxelCount;
+				OutAsset.SetValue(X, Y, Z, NewValue);
+				OutAsset.SetMaterial(X, Y, Z, FVoxelMaterial(0, 0, 0)); // TODO
+				OutAsset.SetVoxelType(X, Y, Z, FVoxelType(NewValue > 1 - KINDA_SMALL_NUMBER ? IgnoreValue : (NewValue >= 0 ? UseValueIfSameSign : UseValue), IgnoreMaterial));
+			}
+		}
+	}
+
+	OutCompressedAsset = NewObject<UVoxelDataAsset>();
+	((UVoxelDataAsset*)OutCompressedAsset)->InitFromAsset(&OutAsset);
+}
+
+void UVoxelTools::ApplyConvolutionToAsset(UVoxelAsset* InCompressedAsset, UVoxelAsset*& OutCompressedAsset, const F3DConvolutionMatrix& ConvolutionMatrix)
+{
+	if (!InCompressedAsset)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("DownscaleAsset: Invalid Asset"));
+		return;
+	}
+
+	FDecompressedVoxelAsset* InAsset;
+	FDecompressedVoxelDataAsset OutAsset;
+	InCompressedAsset->GetDecompressedAsset(InAsset, 1);
+
+	FVoxelBox InBounds = InAsset->GetBounds();
+
+	OutAsset.SetHalfSize((InBounds.Max.X - InBounds.Min.X) / 2 + 2, (InBounds.Max.Y - InBounds.Min.Y) / 2 + 2, (InBounds.Max.Z - InBounds.Min.Z) / 2 + 2);
+
+	FVoxelBox OutBounds = OutAsset.GetBounds();
+	for (int X = OutBounds.Min.X; X <= OutBounds.Max.X; X++)
+	{
+		for (int Y = OutBounds.Min.Y; Y <= OutBounds.Max.Y; Y++)
+		{
+			for (int Z = OutBounds.Min.Z; Z <= OutBounds.Max.Z; Z++)
+			{
+				float NewValue;
+				EVoxelValueType NewValueType;
+
+				FVoxelMaterial NewMaterial;
+				EVoxelMaterialType NewMaterialType;
+
+				if (InBounds.IsInside(X, Y, Z))
+				{
+					float TotalValue = 0;
+					for (int I = -1; I <= 1; I++)
+					{
+						for (int J = -1; J <= 1; J++)
+						{
+							for (int K = -1; K <= 1; K++)
+							{
+								int A = X - OutBounds.Min.X + InBounds.Min.X + I;
+								int B = Y - OutBounds.Min.Y + InBounds.Min.Y + J;
+								int C = Z - OutBounds.Min.Z + InBounds.Min.Z + K;
+
+								TotalValue += ConvolutionMatrix.GetAt(I, J, K) * (InBounds.IsInside(A, B, C) ? InAsset->GetValue(A, B, C) : 1);
+							}
+						}
+					}
+
+					NewMaterial = InAsset->GetMaterial(X, Y, Z);
+					NewMaterialType = InAsset->GetVoxelType(X, Y, Z).GetMaterialType();
+
+					NewValue = TotalValue;
+					NewValueType = InAsset->GetVoxelType(X, Y, Z).GetValueType();
+				}
+				else
+				{
+					NewMaterial = FVoxelMaterial(0, 0, 0);
+					NewMaterialType = IgnoreMaterial;
+
+					NewValue = 1;
+					NewValueType = IgnoreValue;
+				}
+
+				OutAsset.SetValue(X, Y, Z, NewValue);
+				OutAsset.SetMaterial(X, Y, Z, NewMaterial);
+				OutAsset.SetVoxelType(X, Y, Z, FVoxelType(NewValueType, NewMaterialType));
+			}
+		}
+	}
+
+	OutCompressedAsset = NewObject<UVoxelDataAsset>();
+	((UVoxelDataAsset*)OutCompressedAsset)->InitFromAsset(&OutAsset);
 }

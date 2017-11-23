@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
+#include "ConvolutionMatrix.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;
@@ -171,4 +172,15 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
 		static void RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected = true, bool bAsync = false, float ValueMultiplier = 1);
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
+		static void TransformVoxelAsset(UVoxelAsset* InAsset, UVoxelAsset*& OutAsset, const FTransform& Transform);
+
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
+		static void DownscaleAsset(UVoxelAsset* InAsset, UVoxelAsset*& OutAsset, const int HalfOfDownscalingFactor);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
+		static void ApplyConvolutionToAsset(UVoxelAsset* InAsset, UVoxelAsset*& OutAsset, const F3DConvolutionMatrix& ConvolutionMatrix);
 };
