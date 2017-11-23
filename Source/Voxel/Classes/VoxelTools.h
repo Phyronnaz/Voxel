@@ -35,7 +35,7 @@ public:
 	 * @param	HardnessMultiplier	-HardnessMultiplier will be set inside the sphere and HardnessMultiplier outside
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "4"))
-		static void SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const float MaxDifferenceWhenSameSign = 0.1f, const bool bAsync = false, const float HardnessMultiplier = 1);
+		static void SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync = false, const float HardnessMultiplier = 1);
 
 	/**
 	* Set value to positive or negative in a specified box. Box is placed on its bottom side, relative to the supplied world space position.

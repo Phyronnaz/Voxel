@@ -25,7 +25,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, 
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
 
-void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const float MaxDifferenceWhenSameSign, const bool bAsync, const float HardnessMultiplier)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetValueSphere);
 
@@ -73,14 +73,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 						{
 							if (FVoxelType::HaveSameSign(OldValue, Value))
 							{
-								if (FMath::Abs(OldValue) > 1 - KINDA_SMALL_NUMBER)
-								{
-									bValid = true;
-								}
-								else
-								{
-									bValid = FMath::Abs(OldValue - Value) < MaxDifferenceWhenSameSign;
-								}
+								bValid = FMath::Abs(OldValue) > 1 - KINDA_SMALL_NUMBER;
 							}
 							else
 							{
@@ -89,11 +82,10 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 						}
 						if (bValid)
 						{
-							//DrawDebugPoint(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), 5, FColor::Red, false, 1);
-							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::UpVector), FColor::Green, false, 1);
-							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::RightVector), FColor::Green, false, 1);
-							//DrawDebugLine(World->GetWorld(), World->GetTransform().TransformPosition((FVector)CurrentPosition), World->GetTransform().TransformPosition((FVector)CurrentPosition + FVector::ForwardVector), FColor::Green, false, 1);
-							Data->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, LastOctree);
+							if (LIKELY(Data->IsInWorld(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z)))
+							{
+								Data->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, LastOctree);
+							}
 						}
 					}
 				}
@@ -195,13 +187,20 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 							Material.Index2 = MaterialIndex;
 						}
 
-						// Apply changes
-						Data->SetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Material, LastOctree);
+						if (LIKELY(Data->IsInWorld(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z)))
+						{
+							// Apply changes
+							Data->SetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Material, LastOctree);
+						}
 					}
 					else if (Distance < Radius + FadeDistance + 2 * VoxelDiagonalLength && (bUseLayer1 ? Material.Index1 : Material.Index2) != MaterialIndex)
 					{
 						Material.Alpha = bUseLayer1 ? 255 : 0;
-						Data->SetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Material, LastOctree);
+
+						if (LIKELY(Data->IsInWorld(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z)))
+						{
+							Data->SetMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Material, LastOctree);
+						}
 					}
 				}
 			}
@@ -295,15 +294,18 @@ void UVoxelTools::SetValueProjection(AVoxelWorld* World, const FVector StartPosi
 	{
 		const FIntVector Point = Tuple.Get<0>();
 		const float Distance = Tuple.Get<1>();
-		if (bAdd)
+		if (World->IsInWorld(Point))
 		{
-			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) - Strength, MinValue, MaxValue));
+			if (bAdd)
+			{
+				World->SetValue(Point, FMath::Clamp(World->GetValue(Point) - Strength, MinValue, MaxValue));
+			}
+			else
+			{
+				World->SetValue(Point, FMath::Clamp(World->GetValue(Point) + Strength, MinValue, MaxValue));
+			}
+			World->UpdateChunksAtPosition(Point, bAsync);
 		}
-		else
-		{
-			World->SetValue(Point, FMath::Clamp(World->GetValue(Point) + Strength, MinValue, MaxValue));
-		}
-		World->UpdateChunksAtPosition(Point, bAsync);
 	}
 }
 
@@ -355,15 +357,21 @@ void UVoxelTools::SetMaterialProjection(AVoxelWorld * World, const FVector Start
 				Material.Index2 = MaterialIndex;
 			}
 
-			// Apply changes
-			World->SetMaterial(Point, Material);
-			World->UpdateChunksAtPosition(Point, bAsync);
+			if (World->IsInWorld(Point))
+			{
+				// Apply changes
+				World->SetMaterial(Point, Material);
+				World->UpdateChunksAtPosition(Point, bAsync);
+			}
 		}
 		else if ((bUseLayer1 ? Material.Index1 : Material.Index2) != MaterialIndex)
 		{
 			Material.Alpha = bUseLayer1 ? 255 : 0;
-			World->SetMaterial(Point, Material);
-			World->UpdateChunksAtPosition(Point, bAsync);
+			if (World->IsInWorld(Point))
+			{
+				World->SetMaterial(Point, Material);
+				World->UpdateChunksAtPosition(Point, bAsync);
+			}
 		}
 	}
 }
@@ -917,11 +925,7 @@ void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position,
 						{
 							auto Q = CurrentPosition + P;
 
-							FVoxelMaterial LMaterial;
-							float LValue;
-							Data->GetValueAndMaterial(LX, LY, LZ, LValue, LMaterial);
-
-							CurrentData->SetMaterial(Q.X, Q.Y, Q.Z, LMaterial);
+							CurrentData->SetMaterial(Q.X, Q.Y, Q.Z, Data->GetMaterial(LX, LY, LZ));
 						}
 
 						Queue.push_front(FIntVector(LX - 1, LY - 1, LZ - 1));
