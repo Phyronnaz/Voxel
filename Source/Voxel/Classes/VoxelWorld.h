@@ -66,6 +66,7 @@ public:
 	FORCEINLINE bool GetComputeExtendedCollisions();
 	FORCEINLINE bool GetDebugCollisions() const;
 	FORCEINLINE float GetDeletionDelay() const;
+	FORCEINLINE float GetNormalThresholdForSimplification() const;
 	FORCEINLINE bool GetEnableAmbientOcclusion() const;
 	FORCEINLINE int GetRayMaxDistance() const;
 	FORCEINLINE int GetRayCount() const;
@@ -203,6 +204,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"))
 		int32 Seed;
+
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+		float NormalThresholdForSimplification;
 
 	UPROPERTY(EditAnywhere, Category = "Ambient Occlusion")
 		bool bEnableAmbientOcclusion;

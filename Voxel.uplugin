@@ -18,7 +18,7 @@
 		{
 			"Name": "Voxel",
 			"Type": "Runtime",
-			"LoadingPhase": "PreDefault",
+			"LoadingPhase": "PostConfigInit",
 			"WhitelistPlatforms" :
 			[
 				"Win64"

@@ -5,6 +5,7 @@
 #include "VoxelData.h"
 #include "VoxelMaterial.h"
 #include <deque>
+#include "Kismet/KismetArrayLibrary.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Cache"), STAT_CACHE, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Main Iter"), STAT_MAIN_ITER, STATGROUP_Voxel);
@@ -16,7 +17,7 @@ DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ GetValueAndColor"), STAT_GETVALUEAND
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ Get2DValueAndColor"), STAT_GET2DVALUEANDCOLOR, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelPolygonizer ~ AmbientOcclusion"), STAT_AMBIENT_OCCLUSION, STATGROUP_Voxel);
 
-FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, const FIntVector& ChunkPosition, const TArray<bool, TFixedAllocator<6>>& ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount)
+FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, const FIntVector& ChunkPosition, const TArray<bool, TFixedAllocator<6>>& ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount, float NormalThresholdForSimplification)
 	: Depth(Depth)
 	, Data(Data)
 	, ChunkPosition(ChunkPosition)
@@ -26,6 +27,7 @@ FVoxelPolygonizer::FVoxelPolygonizer(int Depth, FVoxelData* Data, const FIntVect
 	, bEnableAmbientOcclusion(bEnableAmbientOcclusion)
 	, RayMaxDistance(RayMaxDistance)
 	, RayCount(RayCount)
+	, NormalThresholdForSimplification(NormalThresholdForSimplification)
 {
 
 }
@@ -371,6 +373,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		return;
 	}
 
+	TArray<TArray<int32>> VerticesTriangles;
 	TArray<int32> AllToFiltered;
 	int32 FilteredVertexCount;
 	int32 FilteredTriangleCount;
@@ -451,6 +454,9 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		TArray<FVector> Normals;
 		Normals.SetNumZeroed(FilteredVertexCount); // Zeroed because +=
 
+
+		VerticesTriangles.SetNum(FilteredVertexCount);
+
 		int32 FilteredTriangleIndex = 0;
 		for (auto TrianglesIt = Triangles.begin(); TrianglesIt != Triangles.end(); )
 		{
@@ -476,6 +482,11 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 					OutSection.ProcIndexBuffer[FilteredTriangleIndex] = FC;
 					OutSection.ProcIndexBuffer[FilteredTriangleIndex + 1] = FB;
 					OutSection.ProcIndexBuffer[FilteredTriangleIndex + 2] = FA;
+
+					VerticesTriangles[FA].Add(FilteredTriangleIndex);
+					VerticesTriangles[FB].Add(FilteredTriangleIndex);
+					VerticesTriangles[FC].Add(FilteredTriangleIndex);
+
 					FilteredTriangleIndex += 3;
 				}
 			}
@@ -509,7 +520,6 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		FilteredTriangleCount = FilteredTriangleIndex;;
 		OutSection.ProcIndexBuffer.SetNum(FilteredTriangleCount);
 
-
 		// Apply normals
 		for (int32 i = 0; i < FilteredVertexCount; i++)
 		{
@@ -542,6 +552,197 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 
 	check(Vertices.empty());
 	check(Triangles.empty());
+
+	bool Continue = true;
+	while (Continue)
+	{
+		Continue = false;
+
+		float MinCost = 1e10;
+		int MinU = -1;
+		int MinV = -1;
+
+		TArray<int32> Permutations;
+		Permutations.SetNumUninitialized(OutSection.ProcVertexBuffer.Num());
+		for (int i = 0; i < Permutations.Num(); i++)
+		{
+			Permutations[i] = i;
+		}
+		int32 LastIndex = Permutations.Num() - 1;
+		for (int32 i = 0; i < LastIndex; ++i)
+		{
+			int32 Index = FMath::RandRange(0, LastIndex);
+			if (i != Index)
+			{
+				Permutations.Swap(i, Index);
+			}
+		}
+
+		for (int k = 0; k < OutSection.ProcVertexBuffer.Num(); k++)
+		{
+			int U = Permutations[k];
+			TSet<int32> Neighbors;
+			for (int32 Trig : VerticesTriangles[U])
+			{
+				check(Trig % 3 == 0);
+
+				Neighbors.Add(OutSection.ProcIndexBuffer[Trig]);
+				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 1]);
+				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 2]);
+			}
+			Neighbors.Remove(U);
+			if (Neighbors.Num() == 0)
+			{
+				continue;
+			}
+
+			int Rand = FMath::RandRange(0, Neighbors.Num() - 1);
+			int x = 0;
+			int V = -1;
+			for (auto N : Neighbors)
+			{
+				if (x == Rand)
+				{
+					V = N;
+					break;
+				}
+				x++;
+			}
+
+			FVector PosU = OutSection.ProcVertexBuffer[U].Position;
+			FVector PosV = OutSection.ProcVertexBuffer[V].Position;
+
+			if (PosU.GetMax() >= 15 * Step() || PosU.GetMin() <= Step() || PosV.GetMax() >= 15 * Step() || PosV.GetMin() <= Step())
+			{
+				continue;
+			}
+
+			TArray<int32> Sides;
+			for (int32 Trig : VerticesTriangles[U])
+			{
+				check(Trig % 3 == 0);
+
+				if (OutSection.ProcIndexBuffer[Trig] == V ||
+					OutSection.ProcIndexBuffer[Trig + 1] == V ||
+					OutSection.ProcIndexBuffer[Trig + 2] == V)
+				{
+					Sides.Add(Trig);
+				}
+			}
+			// use the triangle facing most away from the sides
+			// to determine our curvature term
+			float Curvature = 0;
+			for (int32 Face : VerticesTriangles[U])
+			{
+				check(Face % 3 == 0);
+
+				float MinCurv = 1;
+				for (uint32 Side : Sides)
+				{
+					FVector FaceNormal = FVector::ZeroVector;
+					FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face]].Normal;
+					FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face + 1]].Normal;
+					FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face + 2]].Normal;
+					FaceNormal.Normalize();
+
+					FVector SideNormal = FVector::ZeroVector;
+					SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side]].Normal;
+					SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side + 1]].Normal;
+					SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side + 2]].Normal;
+					SideNormal.Normalize();
+
+					MinCurv = FMath::Min(MinCurv, (1 - FVector::DotProduct(FaceNormal, SideNormal)) / 2.0f);
+				}
+				Curvature = FMath::Max(Curvature, MinCurv);
+			}
+			float Cost = FVector::Distance(OutSection.ProcVertexBuffer[U].Position, OutSection.ProcVertexBuffer[V].Position) * Curvature;
+			if (Cost < MinCost)
+			{
+				MinCost = Cost;
+				MinU = U;
+				MinV = V;
+			}
+		}
+		if (MinU != -1 && MinV != -1)
+		{
+			int U = MinU;
+			int V = MinV;
+
+			// make tmp a list of all the neighbors of u
+			TSet<int32> Neighbors;
+			for (int32 Trig : VerticesTriangles[U])
+			{
+				check(Trig % 3 == 0);
+
+				Neighbors.Add(OutSection.ProcIndexBuffer[Trig]);
+				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 1]);
+				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 2]);
+			}
+			Neighbors.Remove(U);
+
+			// delete triangles on edge uv:
+			TArray<int32> RemainingSides;
+			TArray<int32> Sides;
+			for (int32 Trig : VerticesTriangles[U])
+			{
+				check(Trig % 3 == 0);
+
+				int VA = OutSection.ProcIndexBuffer[Trig];
+				int VB = OutSection.ProcIndexBuffer[Trig + 1];
+				int VC = OutSection.ProcIndexBuffer[Trig + 2];
+
+				if (VA == V || VB == V || VC == V)
+				{
+					if (VA != U)
+					{
+						VerticesTriangles[VA].Remove(Trig);
+					}
+					if (VB != U)
+					{
+						VerticesTriangles[VB].Remove(Trig);
+					}
+					if (VC != U)
+					{
+						VerticesTriangles[VC].Remove(Trig);
+					}
+					OutSection.ProcIndexBuffer[Trig] = 0;
+					OutSection.ProcIndexBuffer[Trig + 1] = 0;
+					OutSection.ProcIndexBuffer[Trig + 2] = 0;
+				}
+				else
+				{
+					RemainingSides.Add(Trig);
+				}
+			}
+			// update remaining triangles to have v instead of u
+			for (auto Trig : RemainingSides)
+			{
+				VerticesTriangles[V].Add(Trig);
+				if (OutSection.ProcIndexBuffer[Trig] == U)
+				{
+					OutSection.ProcIndexBuffer[Trig] = V;
+				}
+				if (OutSection.ProcIndexBuffer[Trig + 1] == U)
+				{
+					OutSection.ProcIndexBuffer[Trig + 1] = V;
+				}
+				if (OutSection.ProcIndexBuffer[Trig + 2] == U)
+				{
+					OutSection.ProcIndexBuffer[Trig + 2] = V;
+				}
+			}
+			VerticesTriangles[U].Empty();
+
+			// Delete U
+			OutSection.ProcVertexBuffer[U].Position = FVector::OneVector * 100;
+
+			// recompute the edge collapse costs in neighborhood
+			//for (i = 0; i < tmp.num; i++)
+			//{
+			//	ComputeEdgeCostAtVertex(tmp[i]);
+			//}
+		}
+	}
 
 	if (bComputeTransitions)
 	{

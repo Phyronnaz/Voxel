@@ -14,7 +14,7 @@ struct FVoxelMaterial;
 class FVoxelPolygonizer
 {
 public:
-	FVoxelPolygonizer(int Depth, FVoxelData* Data, const FIntVector& ChunkPosition, const TArray<bool, TFixedAllocator<6>>& ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount);
+	FVoxelPolygonizer(int Depth, FVoxelData* Data, const FIntVector& ChunkPosition, const TArray<bool, TFixedAllocator<6>>& ChunkHasHigherRes, bool bComputeTransitions, bool bComputeCollisions, bool bEnableAmbientOcclusion, int RayMaxDistance, int RayCount, float NormalThresholdForSimplification);
 
 	void CreateSection(FVoxelProcMeshSection& OutSection);
 
@@ -30,6 +30,8 @@ private:
 
 	const int RayMaxDistance;
 	const int RayCount;
+
+	const float NormalThresholdForSimplification;
 
 
 	// Cache of the sign of the values. Can lead to crash if value changed between cache and 2nd access

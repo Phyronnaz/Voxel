@@ -19,9 +19,10 @@ USTRUCT(BlueprintType)
 struct FVoxelProcMeshTangent
 {
 	GENERATED_USTRUCT_BODY()
+public:
 
-		/** Direction of X tangent for this vertex */
-		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Tangent)
+	/** Direction of X tangent for this vertex */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Tangent)
 		FVector TangentX;
 
 	/** Bool that indicates whether we should flip the Y tangent when we compute it using cross product */
@@ -53,8 +54,9 @@ struct FVoxelProcMeshVertex
 {
 	GENERATED_USTRUCT_BODY()
 
-		/** Vertex position */
-		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vertex)
+public:
+	/** Vertex position */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Vertex)
 		FVector Position;
 
 	/** Vertex normal */
@@ -90,8 +92,9 @@ struct FVoxelProcMeshSection
 {
 	GENERATED_USTRUCT_BODY()
 
-		/** Vertex buffer for this section */
-		UPROPERTY()
+public:
+	/** Vertex buffer for this section */
+	UPROPERTY()
 		TArray<FVoxelProcMeshVertex> ProcVertexBuffer;
 
 	/** Index buffer for this section */
@@ -135,26 +138,21 @@ UCLASS(hidecategories = (Object, LOD), meta = (BlueprintSpawnableComponent), Cla
 class VOXEL_API UVoxelProceduralMeshComponent : public UMeshComponent, public IInterface_CollisionDataProvider
 {
 	GENERATED_UCLASS_BODY()
-
-		/** Control visibility of a particular section */
-		UFUNCTION(BlueprintCallable, Category = "Components|ProceduralMesh")
-		void SetMeshSectionVisible(int32 SectionIndex, bool bNewVisibility);
+public:
+	/** Control visibility of a particular section */
+	void SetMeshSectionVisible(int32 SectionIndex, bool bNewVisibility);
 
 	/** Returns whether a particular section is currently visible */
-	UFUNCTION(BlueprintCallable, Category = "Components|ProceduralMesh")
-		bool IsMeshSectionVisible(int32 SectionIndex) const;
+	bool IsMeshSectionVisible(int32 SectionIndex) const;
 
 	/** Returns number of sections currently created for this component */
-	UFUNCTION(BlueprintCallable, Category = "Components|ProceduralMesh")
-		int32 GetNumSections() const;
+	int32 GetNumSections() const;
 
 	/** Add simple collision convex to this component */
-	UFUNCTION(BlueprintCallable, Category = "Components|ProceduralMesh")
-		void AddCollisionConvexMesh(TArray<FVector> ConvexVerts);
+	void AddCollisionConvexMesh(TArray<FVector> ConvexVerts);
 
 	/** Add simple collision convex to this component */
-	UFUNCTION(BlueprintCallable, Category = "Components|ProceduralMesh")
-		void ClearCollisionConvexMeshes();
+	void ClearCollisionConvexMeshes();
 
 	/** Function to replace _all_ simple collision in one go */
 	void SetCollisionConvexMeshes(const TArray< TArray<FVector> >& ConvexMeshes);
@@ -169,18 +167,15 @@ class VOXEL_API UVoxelProceduralMeshComponent : public UMeshComponent, public II
 	 *	Controls whether the complex (Per poly) geometry should be treated as 'simple' collision.
 	 *	Should be set to false if this component is going to be given simple collision and simulated.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Procedural Mesh")
-		bool bUseComplexAsSimpleCollision;
+	bool bUseComplexAsSimpleCollision;
 
 	/**
 	*	Controls whether the physics cooking should be done off the game thread. This should be used when collision geometry doesn't have to be immediately up to date (For example streaming in far away objects)
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Procedural Mesh")
-		bool bUseAsyncCooking;
+	bool bUseAsyncCooking;
 
 	/** Collision data */
-	UPROPERTY(Instanced)
-		class UBodySetup* ProcMeshBodySetup;
+	class UBodySetup* ProcMeshBodySetup;
 
 	/**
 	 *	Get pointer to internal data for one section of this procedural mesh component.

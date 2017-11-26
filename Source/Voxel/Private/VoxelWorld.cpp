@@ -32,6 +32,7 @@ AVoxelWorld::AVoxelWorld()
 	, bComputeCollisions(false)
 	, bComputeExtendedCollisions(true)
 	, bDebugCollisions(false)
+	, NormalThresholdForSimplification(0.1f)
 	, bEnableAmbientOcclusion(false)
 	, RayMaxDistance(5)
 	, RayCount(25)
@@ -382,6 +383,11 @@ bool AVoxelWorld::GetDebugCollisions() const
 float AVoxelWorld::GetDeletionDelay() const
 {
 	return DeletionDelay;
+}
+
+float AVoxelWorld::GetNormalThresholdForSimplification() const
+{
+	return NormalThresholdForSimplification;
 }
 
 bool AVoxelWorld::GetEnableAmbientOcclusion() const
