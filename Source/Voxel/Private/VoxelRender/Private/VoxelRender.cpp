@@ -43,7 +43,7 @@ FVoxelRender::FVoxelRender(AVoxelWorld* World, AActor* ChunksParent, FVoxelData*
 
 	MeshThreadPool->Create(MeshThreadCount, 1024 * 1024);
 	FoliageThreadPool->Create(FoliageThreadCount, 1024 * 1024);
-	CollisionThreadPool->Create(1);
+	CollisionThreadPool->Create(1, 1024 * 1024);
 
 	MainOctree = MakeShareable(new FChunkOctree(this, FIntVector::ZeroValue, Data->Depth, FOctree::GetTopIdFromDepth(Data->Depth)));
 }
