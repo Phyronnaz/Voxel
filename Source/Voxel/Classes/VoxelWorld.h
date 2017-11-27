@@ -205,7 +205,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Voxel", meta = (ClampMin = "1", UIMin = "1"))
 		int32 Seed;
 
-	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay, meta = (ClampMin = "0", UIMin = "0"))
 		float NormalThresholdForSimplification;
 
 	UPROPERTY(EditAnywhere, Category = "Ambient Occlusion")

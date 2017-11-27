@@ -483,9 +483,9 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 					OutSection.ProcIndexBuffer[FilteredTriangleIndex + 1] = FB;
 					OutSection.ProcIndexBuffer[FilteredTriangleIndex + 2] = FA;
 
-					VerticesTriangles[FA].Add(FilteredTriangleIndex);
-					VerticesTriangles[FB].Add(FilteredTriangleIndex);
-					VerticesTriangles[FC].Add(FilteredTriangleIndex);
+					VerticesTriangles[FA].AddUnique(FilteredTriangleIndex);
+					VerticesTriangles[FB].AddUnique(FilteredTriangleIndex);
+					VerticesTriangles[FC].AddUnique(FilteredTriangleIndex);
 
 					FilteredTriangleIndex += 3;
 				}
@@ -553,136 +553,13 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 	check(Vertices.empty());
 	check(Triangles.empty());
 
-	bool Continue = true;
-	while (Continue)
+	/*
 	{
-		Continue = false;
+		TArray<TPair<int, int>> VerticesToCollapse;
 
-		float MinCost = 1e10;
-		int MinU = -1;
-		int MinV = -1;
-
-		TArray<int32> Permutations;
-		Permutations.SetNumUninitialized(OutSection.ProcVertexBuffer.Num());
-		for (int i = 0; i < Permutations.Num(); i++)
+		for (int U = 0; U < OutSection.ProcVertexBuffer.Num(); U++)
 		{
-			Permutations[i] = i;
-		}
-		int32 LastIndex = Permutations.Num() - 1;
-		for (int32 i = 0; i < LastIndex; ++i)
-		{
-			int32 Index = FMath::RandRange(0, LastIndex);
-			if (i != Index)
-			{
-				Permutations.Swap(i, Index);
-			}
-		}
-
-		for (int k = 0; k < OutSection.ProcVertexBuffer.Num(); k++)
-		{
-			int U = Permutations[k];
 			TSet<int32> Neighbors;
-			for (int32 Trig : VerticesTriangles[U])
-			{
-				check(Trig % 3 == 0);
-
-				Neighbors.Add(OutSection.ProcIndexBuffer[Trig]);
-				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 1]);
-				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 2]);
-			}
-			Neighbors.Remove(U);
-			if (Neighbors.Num() == 0)
-			{
-				continue;
-			}
-
-			int Rand = FMath::RandRange(0, Neighbors.Num() - 1);
-			int x = 0;
-			int V = -1;
-			for (auto N : Neighbors)
-			{
-				if (x == Rand)
-				{
-					V = N;
-					break;
-				}
-				x++;
-			}
-
-			FVector PosU = OutSection.ProcVertexBuffer[U].Position;
-			FVector PosV = OutSection.ProcVertexBuffer[V].Position;
-
-			if (PosU.GetMax() >= 15 * Step() || PosU.GetMin() <= Step() || PosV.GetMax() >= 15 * Step() || PosV.GetMin() <= Step())
-			{
-				continue;
-			}
-
-			TArray<int32> Sides;
-			for (int32 Trig : VerticesTriangles[U])
-			{
-				check(Trig % 3 == 0);
-
-				if (OutSection.ProcIndexBuffer[Trig] == V ||
-					OutSection.ProcIndexBuffer[Trig + 1] == V ||
-					OutSection.ProcIndexBuffer[Trig + 2] == V)
-				{
-					Sides.Add(Trig);
-				}
-			}
-			// use the triangle facing most away from the sides
-			// to determine our curvature term
-			float Curvature = 0;
-			for (int32 Face : VerticesTriangles[U])
-			{
-				check(Face % 3 == 0);
-
-				float MinCurv = 1;
-				for (uint32 Side : Sides)
-				{
-					FVector FaceNormal = FVector::ZeroVector;
-					FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face]].Normal;
-					FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face + 1]].Normal;
-					FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face + 2]].Normal;
-					FaceNormal.Normalize();
-
-					FVector SideNormal = FVector::ZeroVector;
-					SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side]].Normal;
-					SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side + 1]].Normal;
-					SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side + 2]].Normal;
-					SideNormal.Normalize();
-
-					MinCurv = FMath::Min(MinCurv, (1 - FVector::DotProduct(FaceNormal, SideNormal)) / 2.0f);
-				}
-				Curvature = FMath::Max(Curvature, MinCurv);
-			}
-			float Cost = FVector::Distance(OutSection.ProcVertexBuffer[U].Position, OutSection.ProcVertexBuffer[V].Position) * Curvature;
-			if (Cost < MinCost)
-			{
-				MinCost = Cost;
-				MinU = U;
-				MinV = V;
-			}
-		}
-		if (MinU != -1 && MinV != -1)
-		{
-			int U = MinU;
-			int V = MinV;
-
-			// make tmp a list of all the neighbors of u
-			TSet<int32> Neighbors;
-			for (int32 Trig : VerticesTriangles[U])
-			{
-				check(Trig % 3 == 0);
-
-				Neighbors.Add(OutSection.ProcIndexBuffer[Trig]);
-				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 1]);
-				Neighbors.Add(OutSection.ProcIndexBuffer[Trig + 2]);
-			}
-			Neighbors.Remove(U);
-
-			// delete triangles on edge uv:
-			TArray<int32> RemainingSides;
-			TArray<int32> Sides;
 			for (int32 Trig : VerticesTriangles[U])
 			{
 				check(Trig % 3 == 0);
@@ -691,59 +568,171 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 				int VB = OutSection.ProcIndexBuffer[Trig + 1];
 				int VC = OutSection.ProcIndexBuffer[Trig + 2];
 
-				if (VA == V || VB == V || VC == V)
+				if (VA < U)
 				{
-					if (VA != U)
-					{
-						VerticesTriangles[VA].Remove(Trig);
-					}
-					if (VB != U)
-					{
-						VerticesTriangles[VB].Remove(Trig);
-					}
-					if (VC != U)
-					{
-						VerticesTriangles[VC].Remove(Trig);
-					}
-					OutSection.ProcIndexBuffer[Trig] = 0;
-					OutSection.ProcIndexBuffer[Trig + 1] = 0;
-					OutSection.ProcIndexBuffer[Trig + 2] = 0;
+					Neighbors.Add(VA);
 				}
-				else
+				if (VB < U)
 				{
-					RemainingSides.Add(Trig);
+					Neighbors.Add(VB);
+				}
+				if (VC < U)
+				{
+					Neighbors.Add(VC);
 				}
 			}
-			// update remaining triangles to have v instead of u
-			for (auto Trig : RemainingSides)
+
+			int MinV = -1;
+			int MinCurvature = 1;
+			for (int V : Neighbors)
 			{
-				VerticesTriangles[V].Add(Trig);
-				if (OutSection.ProcIndexBuffer[Trig] == U)
+				check(V < U);
+				FVector PosU = OutSection.ProcVertexBuffer[U].Position;
+				FVector PosV = OutSection.ProcVertexBuffer[V].Position;
+
+				if (PosU.GetMax() >= Size() - Step() - KINDA_SMALL_NUMBER || PosU.GetMin() <= Step() + KINDA_SMALL_NUMBER)
 				{
-					OutSection.ProcIndexBuffer[Trig] = V;
+					continue;
 				}
-				if (OutSection.ProcIndexBuffer[Trig + 1] == U)
+
+				TArray<int32> Sides;
+				for (int32 Trig : VerticesTriangles[U])
 				{
-					OutSection.ProcIndexBuffer[Trig + 1] = V;
+					check(Trig % 3 == 0);
+
+					if (OutSection.ProcIndexBuffer[Trig] == V ||
+						OutSection.ProcIndexBuffer[Trig + 1] == V ||
+						OutSection.ProcIndexBuffer[Trig + 2] == V)
+					{
+						Sides.Add(Trig);
+					}
 				}
-				if (OutSection.ProcIndexBuffer[Trig + 2] == U)
+				// use the triangle facing most away from the sides
+				// to determine our curvature term
+				float Curvature = 0;
+				for (int32 Face : VerticesTriangles[U])
 				{
-					OutSection.ProcIndexBuffer[Trig + 2] = V;
+					check(Face % 3 == 0);
+
+					float MinCurv = 1;
+					for (uint32 Side : Sides)
+					{
+						FVector FaceNormal = FVector::ZeroVector;
+						FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face]].Normal;
+						FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face + 1]].Normal;
+						FaceNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Face + 2]].Normal;
+						FaceNormal.Normalize();
+
+						FVector SideNormal = FVector::ZeroVector;
+						SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side]].Normal;
+						SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side + 1]].Normal;
+						SideNormal += OutSection.ProcVertexBuffer[OutSection.ProcIndexBuffer[Side + 2]].Normal;
+						SideNormal.Normalize();
+
+						MinCurv = FMath::Min(MinCurv, (1 - FVector::DotProduct(FaceNormal, SideNormal)) / 2.0f);
+					}
+					Curvature = FMath::Max(Curvature, MinCurv);
+				}
+				if (Curvature < MinCurvature)
+				{
+					MinCurvature = Curvature;
+					MinV = V;
 				}
 			}
-			VerticesTriangles[U].Empty();
+			if (MinCurvature < NormalThresholdForSimplification && MinV != -1)
+			{
+				VerticesToCollapse.Add(TPair<int, int>(U, MinV));
+			}
+		}
 
-			// Delete U
-			OutSection.ProcVertexBuffer[U].Position = FVector::OneVector * 100;
+		TArray<int> Bijection;
+		Bijection.SetNumUninitialized(OutSection.ProcVertexBuffer.Num());
+		for (int i = 0; i < Bijection.Num(); i++)
+		{
+			Bijection[i] = i;
+		}
 
-			// recompute the edge collapse costs in neighborhood
-			//for (i = 0; i < tmp.num; i++)
-			//{
-			//	ComputeEdgeCostAtVertex(tmp[i]);
-			//}
+		for (TPair<int, int> Pair : VerticesToCollapse)
+		{
+			int U = Pair.Get<0>();
+			int V = Pair.Get<1>();
+
+			check(V < U);
+
+			while (Bijection[U] != U)
+			{
+				U = Bijection[U];
+			}
+			while (Bijection[V] != V)
+			{
+				V = Bijection[V];
+			}
+			check(Bijection[U] == U);
+			check(Bijection[V] == V);
+
+			if (FVector::Distance(OutSection.ProcVertexBuffer[U].Position, OutSection.ProcVertexBuffer[V].Position) < 2 * Step())
+			{
+				// delete triangles on edge uv:
+				TArray<int32> RemainingSides;
+				TArray<int32> Sides;
+				for (int32 Trig : VerticesTriangles[U])
+				{
+					check(Trig % 3 == 0);
+
+					int VA = OutSection.ProcIndexBuffer[Trig];
+					int VB = OutSection.ProcIndexBuffer[Trig + 1];
+					int VC = OutSection.ProcIndexBuffer[Trig + 2];
+
+					if (VA == V || VB == V || VC == V)
+					{
+						if (VA != U)
+						{
+							VerticesTriangles[VA].Remove(Trig);
+						}
+						if (VB != U)
+						{
+							VerticesTriangles[VB].Remove(Trig);
+						}
+						if (VC != U)
+						{
+							VerticesTriangles[VC].Remove(Trig);
+						}
+						OutSection.ProcIndexBuffer[Trig] = 0;
+						OutSection.ProcIndexBuffer[Trig + 1] = 0;
+						OutSection.ProcIndexBuffer[Trig + 2] = 0;
+					}
+					else
+					{
+						RemainingSides.AddUnique(Trig);
+					}
+				}
+
+				// update remaining triangles to have v instead of u
+				for (auto Trig : RemainingSides)
+				{
+					VerticesTriangles[V].AddUnique(Trig);
+					if (OutSection.ProcIndexBuffer[Trig] == U)
+					{
+						OutSection.ProcIndexBuffer[Trig] = V;
+					}
+					if (OutSection.ProcIndexBuffer[Trig + 1] == U)
+					{
+						OutSection.ProcIndexBuffer[Trig + 1] = V;
+					}
+					if (OutSection.ProcIndexBuffer[Trig + 2] == U)
+					{
+						OutSection.ProcIndexBuffer[Trig + 2] = V;
+					}
+				}
+				VerticesTriangles[U].Empty();
+				Bijection[U] = V;
+
+				// Delete U
+				OutSection.ProcVertexBuffer[U].Position = FVector::OneVector * 100;
+			}
 		}
 	}
-
+	*/
 	if (bComputeTransitions)
 	{
 		const int OldVerticesSize = VerticesSize;

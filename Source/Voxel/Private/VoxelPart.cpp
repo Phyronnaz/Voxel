@@ -48,8 +48,8 @@ void AVoxelPart::Init(FVoxelData* Data, UMaterialInterface* Material, AVoxelWorl
 			{
 				FIntVector Position = FIntVector(X, Y, Z);
 
-				// TODO: Ambient Occlusion
-				TSharedPtr<FVoxelPolygonizer> Render = MakeShareable(new FVoxelPolygonizer(0, Data, Position, ChunkHasHigherRes, false, true, false, 0, 0));
+				// TODO: Ambient Occlusion + Normal threshold
+				TSharedPtr<FVoxelPolygonizer> Render = MakeShareable(new FVoxelPolygonizer(0, Data, Position, ChunkHasHigherRes, false, true, false, 0, 0, 0));
 
 				TSharedPtr<FVoxelProcMeshSection> Section = MakeShareable(new FVoxelProcMeshSection());
 				Render->CreateSection(*Section);

@@ -454,7 +454,8 @@ FVoxelPolygonizer* UVoxelChunkComponent::CreatePolygonizer(FAsyncPolygonizerTask
 			CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions(),
 			Render->World->GetEnableAmbientOcclusion(),
 			Render->World->GetRayMaxDistance(),
-			Render->World->GetRayCount()
+			Render->World->GetRayCount(),
+			Render->World->GetNormalThresholdForSimplification()
 		);
 	}
 	else
