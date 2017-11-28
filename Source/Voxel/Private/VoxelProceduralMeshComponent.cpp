@@ -96,6 +96,7 @@ public:
 /** Vertex Factory */
 class FProcMeshVertexFactory : public FLocalVertexFactory
 {
+	DECLARE_VERTEX_FACTORY_TYPE(FProcMeshVertexFactory)
 public:
 
 	FProcMeshVertexFactory()
@@ -138,6 +139,7 @@ public:
 		}
 	}
 };
+IMPLEMENT_VERTEX_FACTORY_TYPE(FProcMeshVertexFactory, "/Plugin/Voxel/Private/VoxelVertexFactory.ush", true, true, true, true, true);
 
 /** Class representing a single section of the proc mesh */
 class FProcMeshProxySection

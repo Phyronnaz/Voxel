@@ -27,13 +27,15 @@ DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, 
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
 
-void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const float Radius, const float NoiseScale, const bool bAsync /*= false*/, const float HardnessMultiplier /*= 1*/)
+void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const float WorldRadius, const float NoiseScale, const bool bAsync /*= false*/, const float HardnessMultiplier /*= 1*/)
 {
 	if (!World)
 	{
 		UE_LOG(LogVoxel, Error, TEXT("SetValueSphere: World is NULL"));
 		return;
 	}
+
+	const float Radius = WorldRadius / World->GetVoxelSize();
 
 	// Position in voxel space
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
@@ -75,14 +77,7 @@ void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const fl
 						}
 						else
 						{
-							if (FVoxelType::HaveSameSign(OldValue, Value))
-							{
-								bValid = FMath::Abs(OldValue) > 1 - KINDA_SMALL_NUMBER;
-							}
-							else
-							{
-								bValid = false;
-							}
+							bValid = FVoxelType::HaveSameSign(OldValue, Value);
 						}
 						if (bValid)
 						{
@@ -100,7 +95,7 @@ void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const fl
 	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -(IntRadius + 1), LocalPosition + FIntVector(1, 1, 1) * (IntRadius + 1)), bAsync);
 }
 
-void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
+void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float WorldRadius, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetValueSphere);
 
@@ -109,6 +104,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 		UE_LOG(LogVoxel, Error, TEXT("SetValueSphere: World is NULL"));
 		return;
 	}
+	const float Radius = WorldRadius / World->GetVoxelSize();
 
 	// Position in voxel space
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
@@ -146,14 +142,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 						}
 						else
 						{
-							if (FVoxelType::HaveSameSign(OldValue, Value))
-							{
-								bValid = FMath::Abs(OldValue) > 1 - KINDA_SMALL_NUMBER;
-							}
-							else
-							{
-								bValid = false;
-							}
+							bValid = FVoxelType::HaveSameSign(OldValue, Value);
 						}
 						if (bValid)
 						{
@@ -205,7 +194,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 //	}
 //}
 
-void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, const float Radius, const uint8 MaterialIndex, const bool bUseLayer1, const float FadeDistance, const bool bAsync)
+void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, const float WorldRadius, const uint8 MaterialIndex, const bool bUseLayer1, const float FadeDistance, const bool bAsync)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SetMaterialSphere);
 
@@ -214,6 +203,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 		UE_LOG(LogVoxel, Error, TEXT("SetMaterialSphere: World is NULL"));
 		return;
 	}
+	const float Radius = WorldRadius / World->GetVoxelSize();
 
 	FIntVector LocalPosition = World->GlobalToLocal(Position);
 
@@ -298,10 +288,17 @@ void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPos
 	FVector Tangent;
 	// N dot T = 0
 	// <=> N.X * T.X + N.Y * T.Y + N.Z * T.Z = 0
-	// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y)
-	Tangent.X = 1;
-	Tangent.Y = 1;
-	Tangent.Z = -1 / Direction.Z * (Direction.X * Tangent.X + Direction.Y * Tangent.Y);
+	// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y) if N.Z != 0
+	if (Direction.Z != 0)
+	{
+		Tangent.X = 1;
+		Tangent.Y = 1;
+		Tangent.Z = -1 / Direction.Z * (Direction.X * Tangent.X + Direction.Y * Tangent.Y);
+	}
+	else
+	{
+		Tangent = FVector(1, 0, 0);
+	}
 	Tangent.Normalize();
 
 	// Compute bitangent
@@ -471,11 +468,17 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector StartPosition, FVecto
 	FVector Tangent;
 	// N dot T = 0
 	// <=> N.X * T.X + N.Y * T.Y + N.Z * T.Z = 0
-	// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y)
-	Tangent.X = 1;
-	Tangent.Y = 1;
-	Tangent.Z = -1 / Direction.Z * (Direction.X * Tangent.X + Direction.Y * Tangent.Y);
-	Tangent.Normalize();
+	// <=> T.Z = -1 / N.Z * (N.X * T.X + N.Y * T.Y) if N.Z != 0
+	if (Direction.Z != 0)
+	{
+		Tangent.X = 1;
+		Tangent.Y = 1;
+		Tangent.Z = -1 / Direction.Z * (Direction.X * Tangent.X + Direction.Y * Tangent.Y);
+	}
+	else
+	{
+		Tangent = FVector(1, 0, 0);
+	}
 
 	// Compute bitangent
 	FVector Bitangent = FVector::CrossProduct(Tangent, Direction).GetSafeNormal();

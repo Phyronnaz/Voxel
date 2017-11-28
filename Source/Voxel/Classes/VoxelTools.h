@@ -33,7 +33,7 @@ public:
 	 * Set value to positive or negative in a sphere
 	 * @param	World				Voxel world
 	 * @param	Position			Position in world space
-	 * @param	Radius				Radius of the sphere in voxel space
+	 * @param	Radius				Radius of the sphere in world space
 	 * @param	bAdd				Add or remove?
 	 * @param	bAsync				Update async
 	 * @param	HardnessMultiplier	-HardnessMultiplier will be set inside the sphere and HardnessMultiplier outside
@@ -60,7 +60,7 @@ public:
 	 * Set color in a sphere
 	 * @param	World			Voxel world
 	 * @param	Position		Position in world space
-	 * @param	Radius			Radius of the sphere in voxel space
+	 * @param	Radius			Radius of the sphere in world space
 	 * @param	Color			Color to set
 	 * @param	FadeDistance	Size, in world space, of external band where color is interpolated with existing one
 	 * @param	bAsync				Update async
