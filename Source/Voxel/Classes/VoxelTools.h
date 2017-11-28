@@ -13,7 +13,7 @@ class UVoxelAsset;
 UENUM(BlueprintType)
 enum class EBlueprintSuccess : uint8
 {
-	Sucess, // Correcting typo makes editor crash
+	Success,
 	Failed
 };
 
@@ -25,6 +25,9 @@ class VOXEL_API UVoxelTools : public UObject
 {
 	GENERATED_BODY()
 public:
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
+		static void AddCrater(AVoxelWorld* World, const FVector Position, const float Radius, const float NoiseScale = 1, const bool bAsync = false, const float HardnessMultiplier = 1);
 
 	/**
 	 * Set value to positive or negative in a sphere

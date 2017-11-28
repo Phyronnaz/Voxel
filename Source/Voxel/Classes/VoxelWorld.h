@@ -98,7 +98,7 @@ public:
 		FVector LocalToGlobal(const FIntVector& Position) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		TArray<FIntVector> GetNeighboringPositions(const FVector& GlobalPosition);
+		TArray<FIntVector> GetNeighboringPositions(const FVector& GlobalPosition) const;
 
 	/**
 	 * Add chunk to update queue that will be processed at the end of the frame

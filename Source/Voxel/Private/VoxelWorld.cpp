@@ -416,7 +416,7 @@ FVector AVoxelWorld::LocalToGlobal(const FIntVector& Position) const
 	return GetTransform().TransformPosition(GetVoxelSize() * (FVector)Position);
 }
 
-TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition)
+TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition) const
 {
 	FVector P = GetTransform().InverseTransformPosition(GlobalPosition) / GetVoxelSize();
 	return TArray<FIntVector>({

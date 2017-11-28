@@ -54,14 +54,14 @@ void UVoxelChunkComponent::Init(FChunkOctree* NewOctree)
 	Size = CurrentOctree->Size();
 
 	bCookCollisions = CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions();
-	if (bCookCollisions)
+	/*if (bCookCollisions)
 	{
 		SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
 	else
 	{
 		SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
+	}*/
 
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
 
@@ -235,7 +235,10 @@ void UVoxelChunkComponent::ApplyNewMesh()
 
 	SetProcMeshSection(0, Section);
 
-	UNavigationSystem::UpdateComponentInNavOctree(*this);
+	if (CurrentOctree->Depth == 0)
+	{
+		UNavigationSystem::UpdateComponentInNavOctree(*this);
+	}
 }
 
 void UVoxelChunkComponent::SetVoxelMaterial(UMaterialInterface* Material)

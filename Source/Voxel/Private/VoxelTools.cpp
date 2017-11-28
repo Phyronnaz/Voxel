@@ -11,6 +11,7 @@
 #include "VoxelPart.h"
 #include "Fluids.h"
 #include "VoxelDataAsset.h"
+#include "FastNoise.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetValueSphere"), STAT_SetValueSphere, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetMaterialSphere"), STAT_SetMaterialSphere, STATGROUP_Voxel);
@@ -25,6 +26,79 @@ DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ImportMesh"), STAT_ImportMesh, STATGROUP_Vo
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, STATGROUP_Voxel);
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
+
+void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const float Radius, const float NoiseScale, const bool bAsync /*= false*/, const float HardnessMultiplier /*= 1*/)
+{
+	if (!World)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("SetValueSphere: World is NULL"));
+		return;
+	}
+
+	// Position in voxel space
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntRadius = FMath::CeilToInt(Radius) + 2;
+
+	FValueOctree* LastOctree = nullptr;
+	FVoxelData* Data = World->GetData();
+
+	FastNoise Noise;
+
+	{
+		Data->BeginSet();
+		for (int X = -IntRadius; X <= IntRadius; X++)
+		{
+			for (int Y = -IntRadius; Y <= IntRadius; Y++)
+			{
+				for (int Z = -IntRadius; Z <= IntRadius; Z++)
+				{
+					const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
+
+					float CurrentRadius = FVector(X, Y, Z).Size();
+					float CurrentNoise = Noise.GetValueFractal(X / CurrentRadius * 5, Y / CurrentRadius * 5, Z / CurrentRadius * 5);
+					const float Distance = CurrentRadius + NoiseScale * CurrentNoise;
+
+					if (Distance <= Radius + 2)
+					{
+						// We want (Radius - Distance) != 0
+						const float Noise = (Radius - Distance == 0) ? 0.0001f : 0;
+						float Value = FMath::Clamp(Radius - Distance + Noise, -2.f, 2.f) / 2;
+
+						Value *= HardnessMultiplier;
+
+						float OldValue = Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);
+
+						bool bValid;
+						if (Value > 0)
+						{
+							bValid = true;
+						}
+						else
+						{
+							if (FVoxelType::HaveSameSign(OldValue, Value))
+							{
+								bValid = FMath::Abs(OldValue) > 1 - KINDA_SMALL_NUMBER;
+							}
+							else
+							{
+								bValid = false;
+							}
+						}
+						if (bValid)
+						{
+							if (LIKELY(Data->IsInWorld(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z)))
+							{
+								Data->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, LastOctree);
+							}
+						}
+					}
+				}
+			}
+		}
+		Data->EndSet();
+	}
+	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -(IntRadius + 1), LocalPosition + FIntVector(1, 1, 1) * (IntRadius + 1)), bAsync);
+}
 
 void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, const float Radius, const bool bAdd, const bool bAsync, const float HardnessMultiplier)
 {
@@ -579,6 +653,13 @@ void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Po
 
 void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& HitPosition, FVector& HitNormal, EBlueprintSuccess& Branches)
 {
+	if (!PlayerController)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetVoxelWorld: Invalid PlayerController"));
+		Branches = EBlueprintSuccess::Failed;
+		return;
+	}
+
 	FHitResult HitResult;
 	if (PlayerController->GetWorld()->LineTraceSingleByChannel(HitResult, WorldPosition, WorldPosition + WorldDirection * MaxDistance, ECC_WorldDynamic))
 	{
@@ -589,7 +670,7 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 
 			HitPosition = HitResult.ImpactPoint;
 			HitNormal = HitResult.ImpactNormal;
-			Branches = EBlueprintSuccess::Sucess;
+			Branches = EBlueprintSuccess::Success;
 		}
 		else
 		{
@@ -604,6 +685,12 @@ void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, f
 
 void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches)
 {
+	if (!PlayerController)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("GetMouseWorldPositionAndDirection: Invalid PlayerController"));
+		Branches = EBlueprintSuccess::Failed;
+		return;
+	}
 	ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(PlayerController->Player);
 
 	if (PlayerController->GetLocalPlayer() && PlayerController->GetLocalPlayer()->ViewportClient)
@@ -620,7 +707,7 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 			{
 				if (UGameplayStatics::DeprojectScreenToWorld(PlayerController, MousePosition, WorldPosition, WorldDirection) == true)
 				{
-					Branches = EBlueprintSuccess::Sucess;
+					Branches = EBlueprintSuccess::Success;
 				}
 				else
 				{
