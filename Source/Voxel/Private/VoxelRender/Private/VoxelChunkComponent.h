@@ -6,6 +6,7 @@
 #include "VoxelThread.h"
 #include "VoxelProceduralMeshComponent.h"
 #include "TransitionDirection.h"
+#include <atomic>
 #include "VoxelChunkComponent.generated.h"
 
 class FVoxelRender;
@@ -13,8 +14,8 @@ class FChunkOctree;
 class FVoxelPolygonizer;
 
 /**
- * Voxel Chunk actor class
- */
+* Voxel Chunk actor class
+*/
 UCLASS()
 class UVoxelChunkComponent : public UVoxelProceduralMeshComponent
 {
@@ -25,29 +26,29 @@ public:
 	~UVoxelChunkComponent();
 
 	/**
-	 * Init this
-	 * @param	NewPosition		Position of this (Minimal corner)
-	 * @param	NewDepth		Width = 16 * 2^Depth
-	 * @param	NewWorld		VoxelWorld
-	 */
+	* Init this
+	* @param	NewPosition		Position of this (Minimal corner)
+	* @param	NewDepth		Width = 16 * 2^Depth
+	* @param	NewWorld		VoxelWorld
+	*/
 	void Init(FChunkOctree* NewOctree);
 
 	/**
-	 * Update this for terrain changes
-	 * @param	bAsync
-	 */
+	* Update this for terrain changes
+	* @param	bAsync
+	*/
 	bool Update(bool bAsync);
 
 	bool UpdateFoliage();
 
 	/**
-	 * Check if an adjacent chunk has changed its resolution, and update async if needed
-	 */
+	* Check if an adjacent chunk has changed its resolution, and update async if needed
+	*/
 	void CheckTransitions();
 
 	/**
-	 * Schedule destruction of this chunk
-	 */
+	* Schedule destruction of this chunk
+	*/
 	void Unload();
 
 	void Delete();
@@ -59,16 +60,19 @@ public:
 	/**
 	* Copy Task section to PrimaryMesh section
 	*/
+	// Must be thread safe
 	void OnMeshComplete(const FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask);
 
 	void ApplyNewMesh();
 
+	// Must be thread safe
 	void OnFoliageComplete();
 
 	void ApplyNewFoliage();
 
 	void ResetRender();
 
+	// Must be thread safe
 	FVoxelPolygonizer* CreatePolygonizer(FAsyncPolygonizerTask* Task = nullptr);
 
 protected:
@@ -90,6 +94,7 @@ private:
 	TArray<FAsyncTask<FAsyncFoliageTask>*> FoliageTasks;
 
 	FChunkOctree* CurrentOctree;
+	FCriticalSection RenderLock;
 	FVoxelRender* Render;
 
 	// For when CurrentOctree is deleted

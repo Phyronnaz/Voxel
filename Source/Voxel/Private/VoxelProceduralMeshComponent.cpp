@@ -710,7 +710,7 @@ void UVoxelProceduralMeshComponent::SetProcMeshSection(int32 SectionIndex, const
 	ProcMeshSections[SectionIndex] = Section;
 
 	UpdateLocalBounds(); // Update overall bounds
-	UpdateCollision(); // Mark collision as dirty
+	if (GetOwner() && GetOwner()->GetWorld() && GetOwner()->GetWorld()->WorldType != EWorldType::Editor) UpdateCollision(); // Mark collision as dirty
 	MarkRenderStateDirty(); // New section requires recreating scene proxy
 }
 

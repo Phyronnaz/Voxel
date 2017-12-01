@@ -49,18 +49,21 @@ void UVoxelChunkComponent::Init(FChunkOctree* NewOctree)
 	check(!CurrentOctree);
 
 	CurrentOctree = NewOctree;
-	Render = CurrentOctree->Render;
+	{
+		FScopeLock Lock(&RenderLock);
+		Render = CurrentOctree->Render;
+	}
 	Position = CurrentOctree->Position;
 	Size = CurrentOctree->Size();
 
 	bCookCollisions = CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions();
 	/*if (bCookCollisions)
 	{
-		SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
 	else
 	{
-		SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}*/
 
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
@@ -181,8 +184,10 @@ void UVoxelChunkComponent::Unload()
 void UVoxelChunkComponent::Delete()
 {
 	check(Render);
-
-	Render = nullptr;
+	{
+		FScopeLock Lock(&RenderLock);
+		Render = nullptr;
+	}
 
 	DeleteTasks();
 
@@ -201,7 +206,13 @@ void UVoxelChunkComponent::Delete()
 
 void UVoxelChunkComponent::OnMeshComplete(const FVoxelProcMeshSection& InSection, FAsyncPolygonizerTask* InTask)
 {
-	if (Render)
+	bool bRenderIsValid;
+	{
+		FScopeLock Lock(&RenderLock);
+		bRenderIsValid = Render != nullptr;
+	}
+
+	if (bRenderIsValid)
 	{
 		bool bSame;
 		{
@@ -214,9 +225,12 @@ void UVoxelChunkComponent::OnMeshComplete(const FVoxelProcMeshSection& InSection
 				FScopeLock Lock(&MeshBuilderLock);
 				MeshBuilder = nullptr;
 			}
-			Section = InSection;
+			Section = InSection; // May be slow
 
-			Render->AddApplyNewMesh(this);
+			{
+				FScopeLock Lock(&RenderLock);
+				Render->AddApplyNewMesh(this);
+			}
 		}
 		else
 		{
@@ -404,6 +418,7 @@ void UVoxelChunkComponent::ApplyNewFoliage()
 
 void UVoxelChunkComponent::ResetRender()
 {
+	FScopeLock Lock(&RenderLock);
 	Render = nullptr;
 }
 
@@ -445,6 +460,7 @@ void UVoxelChunkComponent::DeleteTasks()
 FVoxelPolygonizer* UVoxelChunkComponent::CreatePolygonizer(FAsyncPolygonizerTask* Task)
 {
 	FScopeLock Lock(&MeshBuilderLock);
+	FScopeLock LockRender(&RenderLock);
 
 	if (Render && CurrentOctree && (!Task || (MeshBuilder && Task == MeshBuilder)))
 	{
