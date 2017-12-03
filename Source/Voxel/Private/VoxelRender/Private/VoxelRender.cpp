@@ -1,5 +1,7 @@
 // Copyright 2017 Phyronnaz
 
+#pragma warning( disable : 4800 )
+
 #include "VoxelRender.h"
 #include "VoxelPrivate.h"
 #include "VoxelWorld.h"
