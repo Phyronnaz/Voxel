@@ -1,9 +1,5 @@
 // Copyright 2017 Phyronnaz
 
-/**
-* Factory for VoxelGrassType assets
-*/
-
 #pragma once
 
 #include "CoreMinimal.h"

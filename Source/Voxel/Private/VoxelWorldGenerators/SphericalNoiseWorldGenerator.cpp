@@ -143,3 +143,8 @@ void USphericalNoiseWorldGenerator::SetVoxelWorld(AVoxelWorld* VoxelWorld)
 	Noise.SetGradientPerturbAmp(45);
 	Noise.SetFrequency(0.02);
 };
+
+FVector USphericalNoiseWorldGenerator::GetUpVector(int X, int Y, int Z) const
+{
+	return FVector(X, Y, Z).GetSafeNormal();
+}

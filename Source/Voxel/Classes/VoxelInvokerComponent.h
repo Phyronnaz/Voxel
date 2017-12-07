@@ -23,6 +23,7 @@ public:
 
 	UVoxelInvokerComponent();
 
+	// TODO: not working for non pawn
 	bool IsForPhysicsOnly();
 
 protected:

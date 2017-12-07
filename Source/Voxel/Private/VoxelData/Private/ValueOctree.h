@@ -8,6 +8,7 @@
 #include <deque>
 
 class UVoxelWorldGenerator;
+struct FVoxelAsset;
 
 /**
  * Octree that holds modified values & colors
@@ -21,11 +22,8 @@ public:
 	 * @param	Depth			Distance to the highest resolution
 	 * @param	WorldGenerator	Generator of the current world
 	 */
-	FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id, bool bMultiplayer);
+	FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id);
 	~FValueOctree();
-
-	// Is the game multiplayer?
-	const bool bMultiplayer;
 
 	// Generator for this world
 	UVoxelWorldGenerator* WorldGenerator;
@@ -56,20 +54,6 @@ public:
 	 * @param	SaveArray	Array to load chunks from
 	 */
 	void LoadFromSaveAndGetModifiedPositions(std::deque<FVoxelChunkSave>& Save, std::deque<FIntVector>& OutModifiedPositions);
-
-	/**
-	 * Add values that have changed since last network sync to diff arrays
-	 * @param	ValuesDiffs		Values diff array; sorted by increasing Id
-	 * @param	ColorsDiffs		Colors diff array; sorted by increasing Id
-	 */
-	void AddChunksToDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutColorDiffList);
-	/**
-	 * Load values that have changed since last network sync from diff arrays
-	 * @param	ValuesDiffs		Values diff array; top is lowest Id
-	 * @param	ColorsDiffs		Colors diff array; top is lowest Id
-	 * @param	World			Voxel world
-	 */
-	void LoadFromDiffListsAndGetModifiedPositions(std::deque<FVoxelValueDiff>& ValuesDiffs, std::deque<FVoxelMaterialDiff>& ColorsDiffs, std::deque<FIntVector>& OutModifiedPositions);
 
 	/**
 	* Get direct child that owns GlobalPosition
@@ -103,13 +87,6 @@ private:
 	FVoxelMaterial Materials[16 * 16 * 16];
 
 	bool bIsDirty;
-
-	// For multiplayer
-
-	TSet<int> DirtyValues;
-	TSet<int> DirtyMaterials;
-
-	bool bIsNetworkDirty;
 
 	/**
 	 * Create childs of this octree

@@ -11,17 +11,11 @@
 #include "PropertyEditorModule.h"
 
 #include "VoxelWorldDetails.h"
-#include "VoxelLandscapeImporterDetails.h"
-#include "VoxelSplineImporterDetails.h"
-#include "VoxelMeshImporterDetails.h"
-#include "VoxelWorldSectionImporterDetails.h"
 
 #include "IAssetTools.h"
 #include "AssetToolsModule.h"
 
 #include "AssetTools/AssetTypeActions_VoxelGrassType.h"
-#include "AssetTools/AssetTypeActions_VoxelDataAsset.h"
-#include "AssetTools/AssetTypeActions_VoxelLandscapeAsset.h"
 
 #define LOCTEXT_NAMESPACE "FVoxelEditorModule"
 
@@ -60,10 +54,6 @@ protected:
 
 		//Custom detail views
 		PropertyModule.RegisterCustomClassLayout("VoxelWorld", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldDetails::MakeInstance));
-		PropertyModule.RegisterCustomClassLayout("VoxelLandscapeImporter", FOnGetDetailCustomizationInstance::CreateStatic(&UVoxelLandscapeImporterDetails::MakeInstance));
-		PropertyModule.RegisterCustomClassLayout("VoxelSplineImporter", FOnGetDetailCustomizationInstance::CreateStatic(&UVoxelSplineImporterDetails::MakeInstance));
-		PropertyModule.RegisterCustomClassLayout("VoxelMeshImporter", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelMeshImporterDetails::MakeInstance));
-		PropertyModule.RegisterCustomClassLayout("VoxelWorldSectionImporter", FOnGetDetailCustomizationInstance::CreateStatic(&FVoxelWorldSectionImporterDetails::MakeInstance));
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 
@@ -74,10 +64,6 @@ protected:
 		if (PropertyModule != nullptr)
 		{
 			PropertyModule->UnregisterCustomClassLayout("VoxelWorld");
-			PropertyModule->UnregisterCustomClassLayout("VoxelLandscapeImporter");
-			PropertyModule->UnregisterCustomClassLayout("VoxelSplineImporter");
-			PropertyModule->UnregisterCustomClassLayout("VoxelMeshImporter");
-			PropertyModule->UnregisterCustomClassLayout("VoxelWorldSectionImporter");
 			PropertyModule->NotifyCustomizationModuleChanged();
 		}
 	}
@@ -88,8 +74,6 @@ protected:
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 
 		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelGrassType));
-		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelDataAsset));
-		RegisterAssetTypeAction(AssetTools, MakeShareable(new FAssetTypeActions_VoxelLandscapeAsset));
 	}
 
 	/**

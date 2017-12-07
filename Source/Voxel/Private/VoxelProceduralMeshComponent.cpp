@@ -18,10 +18,12 @@
 #include "DynamicMeshBuilder.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "Stats/Stats.h"
+#if !PLATFORM_ANDROID
 #include "nvtess.h"
+#endif // !PLATFORM_ANDROID
 #include "PositionVertexBuffer.h"
 #include "StaticMeshVertexBuffer.h"
-#include <TessellationRendering.h>
+#include "TessellationRendering.h"
 
 DECLARE_STATS_GROUP(TEXT("ProceduralMesh"), STATGROUP_ProceduralMesh, STATCAT_Advanced);
 
@@ -146,7 +148,7 @@ class FProcMeshProxySection
 {
 public:
 	/** Material applied to this section */
-	UMaterialInterface* Material;
+	UMaterialInterface * Material;
 	/** Vertex buffer for this section */
 	FProcMeshVertexBuffer VertexBuffer;
 	/** Index buffer for this section */
@@ -202,6 +204,8 @@ static void ConvertProcMeshToDynMeshVertex(FDynamicMeshVertex& Vert, const FVoxe
 
 
 
+
+#if !PLATFORM_ANDROID
 
 
 /*------------------------------------------------------------------------------
@@ -277,6 +281,7 @@ static void BuildStaticAdjacencyIndexBuffer(
 	}
 }
 
+#endif // !PLATFORM_ANDROID
 
 
 
@@ -333,6 +338,8 @@ public:
 
 
 
+#if !PLATFORM_ANDROID
+
 				TArray<uint32> Indices;
 				Indices.SetNum(NewSection->IndexBuffer.Indices.Num());
 				for (int i = 0; i < Indices.Num(); i++)
@@ -345,6 +352,8 @@ public:
 					Indices,
 					NewSection->AdjacencyIndexBuffer.Indices
 				);
+
+#endif // !PLATFORM_ANDROID
 
 
 				// Enqueue initialization of render resource

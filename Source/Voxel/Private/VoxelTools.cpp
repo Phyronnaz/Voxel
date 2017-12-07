@@ -8,10 +8,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "EmptyWorldGenerator.h"
 #include "VoxelData.h"
-#include "VoxelPart.h"
-#include "Fluids.h"
-#include "VoxelDataAsset.h"
 #include "FastNoise.h"
+#include "Misc/QueuedThreadPool.h"
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetValueSphere"), STAT_SetValueSphere, STATGROUP_Voxel);
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetMaterialSphere"), STAT_SetMaterialSphere, STATGROUP_Voxel);
@@ -21,13 +19,108 @@ DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SetMaterialProjection"), STAT_SetMaterialPr
 
 DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ SmoothValue"), STAT_SmoothValue, STATGROUP_Voxel);
 
-DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ImportMesh"), STAT_ImportMesh, STATGROUP_Voxel);
 
-DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ ApplyWaterEffect"), STAT_ApplyWaterEffect, STATGROUP_Voxel);
+FAsyncAddCrater::FAsyncAddCrater(FVoxelData* Data, const FIntVector LocalPosition, const int IntRadius, const float Radius, const uint8 BlackMaterialIndex, const uint8 AddedBlack, const float HardnessMultiplier)
+	:Data(Data)
+	, LocalPosition(LocalPosition)
+	, IntRadius(IntRadius)
+	, Radius(Radius)
+	, BlackMaterialIndex(BlackMaterialIndex)
+	, AddedBlack(AddedBlack)
+	, HardnessMultiplier(HardnessMultiplier)
+{
 
-DECLARE_CYCLE_STAT(TEXT("VoxelTool ~ RemoveNonConnectedBlocks"), STAT_RemoveNonConnectedBlocks, STATGROUP_Voxel);
+}
 
-void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const float WorldRadius, const float NoiseScale, const bool bAsync /*= false*/, const float HardnessMultiplier /*= 1*/)
+void FAsyncAddCrater::DoThreadedWork()
+{
+	FValueOctree* LastOctree = nullptr;
+	FastNoise Noise;
+	Data->BeginSet();
+	for (int X = -IntRadius; X <= IntRadius; X++)
+	{
+		for (int Y = -IntRadius; Y <= IntRadius; Y++)
+		{
+			for (int Z = -IntRadius; Z <= IntRadius; Z++)
+			{
+				const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
+
+				float CurrentRadius = FVector(X, Y, Z).Size();
+				float Distance = CurrentRadius;
+
+				if (Radius - 2 < Distance && Distance <= Radius + 3)
+				{
+					float CurrentNoise = Noise.GetWhiteNoise(X / CurrentRadius, Y / CurrentRadius, Z / CurrentRadius);
+					Distance -= CurrentNoise;
+				}
+
+				if (Distance <= Radius + 2)
+				{
+					// We want (Radius - Distance) != 0
+					const float Noise = (Radius - Distance == 0) ? 0.0001f : 0;
+					float Value = FMath::Clamp(Radius - Distance + Noise, -2.f, 2.f) / 2;
+
+					Value *= HardnessMultiplier;
+
+					float OldValue;
+					FVoxelMaterial OldMaterial;
+					Data->GetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, OldValue, OldMaterial);
+
+					bool bValid;
+					if (Value > 0)
+					{
+						bValid = true;
+					}
+					else
+					{
+						bValid = (OldValue > 0 && Value > 0) || (OldValue <= 0 && Value <= 0);
+					}
+					if (bValid)
+					{
+						if (LIKELY(Data->IsInWorld(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z)))
+						{
+							if (OldMaterial.Index1 == BlackMaterialIndex)
+							{
+								OldMaterial.Alpha = FMath::Clamp<int>(OldMaterial.Alpha - AddedBlack, 0, 255);
+							}
+							else if (OldMaterial.Index2 == BlackMaterialIndex)
+							{
+								OldMaterial.Alpha = FMath::Clamp<int>(OldMaterial.Alpha + AddedBlack, 0, 255);
+							}
+							else if (OldMaterial.Alpha < 128)
+							{
+								// Index 1 biggest
+								OldMaterial.Index2 = BlackMaterialIndex;
+								OldMaterial.Alpha = FMath::Clamp<int>(AddedBlack, 0, 255);
+							}
+							else
+							{
+								// Index 2 biggest
+								OldMaterial.Index1 = BlackMaterialIndex;
+								OldMaterial.Alpha = FMath::Clamp<int>(255 - AddedBlack, 0, 255);
+							}
+
+							Data->SetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, OldMaterial, LastOctree);
+						}
+					}
+				}
+			}
+		}
+	}
+	Data->EndSet();
+
+	delete this;
+}
+
+void FAsyncAddCrater::Abandon()
+{
+	delete this;
+}
+
+
+
+
+void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const float WorldRadius, const uint8 BlackMaterialIndex, const uint8 AddedBlack, const bool bAsync /*= false*/, const float HardnessMultiplier /*= 1*/)
 {
 	if (!World)
 	{
@@ -57,8 +150,13 @@ void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const fl
 					const FIntVector CurrentPosition = LocalPosition + FIntVector(X, Y, Z);
 
 					float CurrentRadius = FVector(X, Y, Z).Size();
-					float CurrentNoise = Noise.GetValueFractal(X / CurrentRadius * 5, Y / CurrentRadius * 5, Z / CurrentRadius * 5);
-					const float Distance = CurrentRadius + NoiseScale * CurrentNoise;
+					float Distance = CurrentRadius;
+
+					if (Radius - 2 < Distance && Distance <= Radius + 3)
+					{
+						float CurrentNoise = Noise.GetWhiteNoise(X / CurrentRadius, Y / CurrentRadius, Z / CurrentRadius);
+						Distance -= CurrentNoise;
+					}
 
 					if (Distance <= Radius + 2)
 					{
@@ -68,7 +166,9 @@ void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const fl
 
 						Value *= HardnessMultiplier;
 
-						float OldValue = Data->GetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z);
+						float OldValue;
+						FVoxelMaterial OldMaterial;
+						Data->GetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, OldValue, OldMaterial);
 
 						bool bValid;
 						if (Value > 0)
@@ -77,13 +177,34 @@ void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const fl
 						}
 						else
 						{
-							bValid = FVoxelType::HaveSameSign(OldValue, Value);
+							bValid = (OldValue > 0 && Value > 0) || (OldValue <= 0 && Value <= 0);
 						}
 						if (bValid)
 						{
 							if (LIKELY(Data->IsInWorld(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z)))
 							{
-								Data->SetValue(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, LastOctree);
+								if (OldMaterial.Index1 == BlackMaterialIndex)
+								{
+									OldMaterial.Alpha = FMath::Clamp<int>(OldMaterial.Alpha - AddedBlack, 0, 255);
+								}
+								else if (OldMaterial.Index2 == BlackMaterialIndex)
+								{
+									OldMaterial.Alpha = FMath::Clamp<int>(OldMaterial.Alpha + AddedBlack, 0, 255);
+								}
+								else if (OldMaterial.Alpha < 128)
+								{
+									// Index 1 biggest
+									OldMaterial.Index2 = BlackMaterialIndex;
+									OldMaterial.Alpha = FMath::Clamp<int>(AddedBlack, 0, 255);
+								}
+								else
+								{
+									// Index 2 biggest
+									OldMaterial.Index1 = BlackMaterialIndex;
+									OldMaterial.Alpha = FMath::Clamp<int>(255 - AddedBlack, 0, 255);
+								}
+
+								Data->SetValueAndMaterial(CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z, Value, OldMaterial, LastOctree);
 							}
 						}
 					}
@@ -92,6 +213,28 @@ void UVoxelTools::AddCrater(AVoxelWorld* World, const FVector Position, const fl
 		}
 		Data->EndSet();
 	}
+	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -(IntRadius + 1), LocalPosition + FIntVector(1, 1, 1) * (IntRadius + 1)), bAsync);
+}
+
+void UVoxelTools::AddCraterMultithreaded(AVoxelWorld* World, const FVector Position, const float WorldRadius, const uint8 BlackMaterialIndex, const uint8 AddedBlack /*= 150*/, const bool bAsync /*= false*/, const float HardnessMultiplier /*= 1*/)
+{
+	if (!World)
+	{
+		UE_LOG(LogVoxel, Error, TEXT("SetValueSphere: World is NULL"));
+		return;
+	}
+
+	const float Radius = WorldRadius / World->GetVoxelSize();
+
+	// Position in voxel space
+	FIntVector LocalPosition = World->GlobalToLocal(Position);
+	int IntRadius = FMath::CeilToInt(Radius) + 2;
+
+	FVoxelData* Data = World->GetData();
+
+	auto Task = new FAsyncAddCrater(Data, LocalPosition, IntRadius, Radius, BlackMaterialIndex, AddedBlack, HardnessMultiplier);
+	GThreadPool->AddQueuedWork(Task);
+
 	World->UpdateChunksOverlappingBox(FVoxelBox(LocalPosition + FIntVector(1, 1, 1) * -(IntRadius + 1), LocalPosition + FIntVector(1, 1, 1) * (IntRadius + 1)), bAsync);
 }
 
@@ -142,7 +285,7 @@ void UVoxelTools::SetValueSphere(AVoxelWorld* World, const FVector Position, con
 						}
 						else
 						{
-							bValid = FVoxelType::HaveSameSign(OldValue, Value);
+							bValid = (OldValue > 0 && Value > 0) || (OldValue <= 0 && Value <= 0);
 						}
 						if (bValid)
 						{
@@ -279,7 +422,7 @@ void UVoxelTools::SetMaterialSphere(AVoxelWorld* World, const FVector Position, 
 void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPosition, const FVector Direction, const float Radius, const float MaxDistance, const float Precision,
 	const bool bShowRaycasts, const bool bShowHitPoints, const bool bShowModifiedVoxels, std::deque<TTuple<FIntVector, float>>& OutModifiedPositionsAndDistances)
 {
-	const FVector ToolPosition = StartPosition;
+	const FVector ToolPosition = StartPosition - Direction * MaxDistance / 2;
 
 	/**
 	* Create a 2D basis from (Tangent, Bitangent)
@@ -336,7 +479,7 @@ void FindModifiedPositionsForRaycasts(AVoxelWorld* World, const FVector StartPos
 						{
 							DrawDebugPoint(World->GetWorld(), World->LocalToGlobal(Point), 3, FColor::White, false, 1);
 						}
-						if (!AddedPoints.Contains(Point))
+						if (!AddedPoints.Contains(Point) && LIKELY(World->IsInWorld(Point)))
 						{
 							AddedPoints.Add(Point);
 							OutModifiedPositionsAndDistances.push_front(TTuple<FIntVector, float>(Point, Distance));
@@ -560,100 +703,6 @@ void UVoxelTools::SmoothValue(AVoxelWorld * World, FVector StartPosition, FVecto
 	}
 }
 
-void UVoxelTools::ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, FVector Position, const bool bAdd, const bool bPositionZIsBottom, const bool bForceUseOfAllVoxels, const bool bAsync)
-{
-	SCOPE_CYCLE_COUNTER(STAT_ImportMesh);
-
-	if (!World)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("ImportAsset: World is NULL"));
-		return;
-	}
-	check(World);
-
-	if (!Asset)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("ImportAsset: Asset is NULL"));
-		return;
-	}
-
-	FIntVector P = World->GlobalToLocal(Position);
-
-	FDecompressedVoxelAsset* DecompressedAsset;
-	Asset->GetDecompressedAsset(DecompressedAsset, World->GetVoxelSize());
-
-	FVoxelBox Bounds = DecompressedAsset->GetBounds();
-	FVoxelData* Data = World->GetData();
-	FValueOctree* LastOctree = nullptr;
-
-	if (bPositionZIsBottom)
-	{
-		P.Z -= Bounds.Min.Z;
-	}
-
-	{
-		Data->BeginSet();
-		for (int X = Bounds.Min.X; X <= Bounds.Max.X; X++)
-		{
-			for (int Y = Bounds.Min.Y; Y <= Bounds.Max.Y; Y++)
-			{
-				for (int Z = Bounds.Min.Z; Z <= Bounds.Max.Z; Z++)
-				{
-					const float AssetValue = (bAdd ? 1 : -1) * DecompressedAsset->GetValue(X, Y, Z);
-					const FVoxelMaterial AssetMaterial = DecompressedAsset->GetMaterial(X, Y, Z);
-					const FVoxelType VoxelType = DecompressedAsset->GetVoxelType(X, Y, Z);
-
-					if (bForceUseOfAllVoxels)
-					{
-						if (LIKELY(Data->IsInWorld(P.X + X, P.Y + Y, P.Z + Z)))
-						{
-							Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, AssetValue, AssetMaterial, LastOctree);
-						}
-					}
-					else if (VoxelType.GetValueType() != IgnoreValue || VoxelType.GetMaterialType() != IgnoreMaterial)
-					{
-						float OldValue;
-						FVoxelMaterial OldMaterial;
-						Data->GetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, OldValue, OldMaterial);
-
-						const FVoxelMaterial NewMaterial = (VoxelType.GetMaterialType() == UseMaterial) ? AssetMaterial : OldMaterial;
-						float NewValue;
-
-						switch (VoxelType.GetValueType())
-						{
-						case IgnoreValue:
-							NewValue = OldValue;
-							break;
-						case UseValue:
-							NewValue = AssetValue;
-							break;
-						case UseValueIfSameSign:
-							NewValue = FVoxelType::HaveSameSign(OldValue, AssetValue) ? AssetValue : OldValue;
-							break;
-						case UseValueIfDifferentSign:
-							NewValue = !FVoxelType::HaveSameSign(OldValue, AssetValue) ? AssetValue : OldValue;
-							break;
-						default:
-							NewValue = 0;
-							check(false);
-						}
-
-						if (LIKELY(Data->IsInWorld(P.X + X, P.Y + Y, P.Z + Z)))
-						{
-							Data->SetValueAndMaterial(P.X + X, P.Y + Y, P.Z + Z, NewValue, NewMaterial, LastOctree);
-						}
-					}
-				}
-			}
-		}
-		Data->EndSet();
-	}
-
-	World->UpdateChunksOverlappingBox(FVoxelBox(Bounds.Min + P, Bounds.Max + P), bAsync);
-
-	delete DecompressedAsset;
-}
-
 void UVoxelTools::GetVoxelWorld(FVector WorldPosition, FVector WorldDirection, float MaxDistance, APlayerController* PlayerController, AVoxelWorld*& World, FVector& HitPosition, FVector& HitNormal, EBlueprintSuccess& Branches)
 {
 	if (!PlayerController)
@@ -727,567 +776,4 @@ void UVoxelTools::GetMouseWorldPositionAndDirection(APlayerController* PlayerCon
 	{
 		Branches = EBlueprintSuccess::Failed;
 	}
-}
-
-void UVoxelTools::ApplyWaterEffect(AVoxelWorld* World, const int N, const bool bInit, TArray<float>& Dens0, TArray<float>& U0, TArray<float>& V0, TArray<float>& W0, const float Visc, const float Diff, const float Dt, TArray<float>& Dens, TArray<float>&U, TArray<float>& V, TArray<float>& W)
-{
-	SCOPE_CYCLE_COUNTER(STAT_ApplyWaterEffect);
-
-	if (!World)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("ApplyWaterEffect: World is NULL"));
-		return;
-	}
-
-	FVoxelData* Data = World->GetData();
-	if (Data)
-	{
-		if (Dens0.Num() == 0 || U0.Num() == 0 || V0.Num() == 0 || W0.Num() == 0 || bInit)
-		{
-			Dens0.SetNum((N + 2) * (N + 2) * (N + 2));
-			U0.SetNum((N + 2) * (N + 2) * (N + 2));
-			V0.SetNum((N + 2) * (N + 2) * (N + 2));
-			W0.SetNum((N + 2) * (N + 2) * (N + 2));
-
-			for (int i = 1; i < N + 1; i++)
-			{
-				for (int j = 1; j < N + 1; j++)
-				{
-					for (int k = 1; k < N + 1; k++)
-					{
-						Dens0[i + (N + 2) * j + (N + 2) * (N + 2) * k] = (FVector(i - 1, j - 1, k - 1) - FVector(N / 2, N / 2, N / 2)).Size() > N / 4 ? 0 : 1;
-					}
-				}
-			}
-		}
-
-		for (int i = 1; i < N + 1; i++)
-		{
-			for (int j = 1; j < N + 1; j++)
-			{
-				for (int k = 2; k < N + 1; k++)
-				{
-					W0[i + (N + 2) * j + (N + 2) * (N + 2) * k] -= 10 * Dt;
-				}
-			}
-		}
-
-		if (Dens.Num() == 0 || U.Num() == 0 || V.Num() == 0)
-		{
-			Dens.SetNum((N + 2) * (N + 2) * (N + 2));
-			U.SetNum((N + 2) * (N + 2) * (N + 2));
-			V.SetNum((N + 2) * (N + 2) * (N + 2));
-			W.SetNum((N + 2) * (N + 2) * (N + 2));
-		}
-
-		FluidStep(N, Dens0, U0, V0, W0, Visc, Diff, Dt, Dens, U, V, W);
-
-		{
-			Data->BeginSet();
-			for (int i = 1; i < N + 1; i++)
-			{
-				for (int j = 1; j < N + 1; j++)
-				{
-					for (int k = 1; k < N + 1; k++)
-					{
-						Data->SetValue(i - 1, j - 1, k - 1, 1 - 2 * Dens[i + (N + 2) * j + (N + 2) *(N + 2) *k]);
-					}
-				}
-			}
-			Data->EndSet();
-		}
-
-		World->UpdateChunksOverlappingBox(FVoxelBox(FIntVector(-1, -1, -1), FIntVector(N + 1, N + 1, N + 1)), false);
-
-		for (int i = 1; i < N + 1; i++)
-		{
-			for (int j = 1; j < N + 1; j++)
-			{
-				for (int k = 1; k < N + 1; k++)
-				{
-					Dens0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
-					U0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
-					V0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
-					W0[i + (N + 2) * j + (N + 2) *(N + 2) *k] = 0;
-				}
-			}
-		}
-	}
-}
-
-// TODO: Update to new FVoxelData API
-void UVoxelTools::RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected, bool bAsync, float ValueMultiplier)
-{
-	SCOPE_CYCLE_COUNTER(STAT_RemoveNonConnectedBlocks);
-
-	if (World == nullptr)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("World is NULL"));
-		return;
-	}
-	check(World);
-
-	// Position in voxel space
-	FIntVector LocalPosition = World->GlobalToLocal(Position);
-	int IntRadius = FMath::CeilToInt(Radius) + 2;
-
-	TArray<bool> Visited;
-	Visited.SetNumZeroed(2 * IntRadius * 2 * IntRadius * 2 * IntRadius);
-
-	std::deque<FIntVector> Queue;
-	Queue.push_front(FIntVector::ZeroValue);
-
-	for (int X = -IntRadius; X < IntRadius; X++)
-	{
-		for (int Y = -IntRadius; Y < IntRadius; Y++)
-		{
-			Queue.push_front(FIntVector(-IntRadius, X, Y));
-			Queue.push_front(FIntVector(IntRadius - 1, X, Y));
-
-			Queue.push_front(FIntVector(X, -IntRadius, Y));
-			Queue.push_front(FIntVector(X, IntRadius - 1, Y));
-
-			Queue.push_front(FIntVector(X, Y, -IntRadius));
-			Queue.push_front(FIntVector(X, Y, IntRadius - 1));
-		}
-	}
-
-	while (!Queue.empty())
-	{
-		const FIntVector RelativePosition = Queue.front();
-		Queue.pop_front();
-
-		const int X = RelativePosition.X;
-		const int Y = RelativePosition.Y;
-		const int Z = RelativePosition.Z;
-
-		const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
-
-		if ((-IntRadius <= X) && (X < IntRadius)
-			&& (-IntRadius <= Y) && (Y < IntRadius)
-			&& (-IntRadius <= Z) && (Z < IntRadius)
-			&& !Visited[Index]
-			&& (World->GetValue(RelativePosition + LocalPosition) < 0))
-		{
-
-			Visited[Index] = true;
-
-			Queue.push_front(FIntVector(X - 1, Y - 1, Z - 1));
-			Queue.push_front(FIntVector(X + 0, Y - 1, Z - 1));
-			Queue.push_front(FIntVector(X + 1, Y - 1, Z - 1));
-			Queue.push_front(FIntVector(X - 1, Y + 0, Z - 1));
-			Queue.push_front(FIntVector(X + 0, Y + 0, Z - 1));
-			Queue.push_front(FIntVector(X + 1, Y + 0, Z - 1));
-			Queue.push_front(FIntVector(X - 1, Y + 1, Z - 1));
-			Queue.push_front(FIntVector(X + 0, Y + 1, Z - 1));
-			Queue.push_front(FIntVector(X + 1, Y + 1, Z - 1));
-			Queue.push_front(FIntVector(X - 1, Y - 1, Z + 0));
-			Queue.push_front(FIntVector(X + 0, Y - 1, Z + 0));
-			Queue.push_front(FIntVector(X + 1, Y - 1, Z + 0));
-			Queue.push_front(FIntVector(X - 1, Y + 0, Z + 0));
-			Queue.push_front(FIntVector(X + 0, Y + 0, Z + 0));
-			Queue.push_front(FIntVector(X + 1, Y + 0, Z + 0));
-			Queue.push_front(FIntVector(X - 1, Y + 1, Z + 0));
-			Queue.push_front(FIntVector(X + 0, Y + 1, Z + 0));
-			Queue.push_front(FIntVector(X + 1, Y + 1, Z + 0));
-			Queue.push_front(FIntVector(X - 1, Y - 1, Z + 1));
-			Queue.push_front(FIntVector(X + 0, Y - 1, Z + 1));
-			Queue.push_front(FIntVector(X + 1, Y - 1, Z + 1));
-			Queue.push_front(FIntVector(X - 1, Y + 0, Z + 1));
-			Queue.push_front(FIntVector(X + 0, Y + 0, Z + 1));
-			Queue.push_front(FIntVector(X + 1, Y + 0, Z + 1));
-			Queue.push_front(FIntVector(X - 1, Y + 1, Z + 1));
-			Queue.push_front(FIntVector(X + 0, Y + 1, Z + 1));
-			Queue.push_front(FIntVector(X + 1, Y + 1, Z + 1));
-		}
-	}
-
-
-	uint8 Depth = FMath::CeilToInt(FMath::Log2(2 * IntRadius / 16.f));
-	UVoxelWorldGenerator* WorldGenerator = NewObject<UEmptyWorldGenerator>();
-
-	TSharedPtr<FVoxelData> Data = MakeShareable(new FVoxelData(Depth, WorldGenerator, false));
-
-	std::deque<FIntVector> PointPositions;
-
-	for (int Z = -IntRadius; Z < IntRadius; Z++)
-	{
-		for (int Y = -IntRadius; Y < IntRadius; Y++)
-		{
-			for (int X = -IntRadius; X < IntRadius; X++)
-			{
-				const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
-				const FIntVector RelativePosition = FIntVector(X, Y, Z);
-				const FIntVector CurrentPosition = RelativePosition + LocalPosition;
-				if (!Visited[Index] && World->GetValue(CurrentPosition) <= 0)
-				{
-					Data->SetValue(RelativePosition.X, RelativePosition.Y, RelativePosition.Z, World->GetValue(CurrentPosition));
-					Data->SetMaterial(RelativePosition.X, RelativePosition.Y, RelativePosition.Z, World->GetMaterial(CurrentPosition));
-
-					// Set external colors
-					TArray<FIntVector> L = {
-						FIntVector(1, 0, 0),
-						FIntVector(0, 1, 0),
-						FIntVector(1, 1, 0),
-						FIntVector(0, 0, 1),
-						FIntVector(1, 0, 1),
-						FIntVector(0, 1, 1),
-						FIntVector(1, 1, 1),
-						FIntVector(-1, 0, 0),
-						FIntVector(0, -1, 0),
-						FIntVector(-1, -1, 0),
-						FIntVector(0, 0, -1),
-						FIntVector(-1, 0, -1),
-						FIntVector(0, -1, -1),
-						FIntVector(-1, -1, -1)
-					};
-					for (auto P : L)
-					{
-						Data->SetMaterial(RelativePosition.X + P.X, RelativePosition.Y + P.Y, RelativePosition.Z + P.Z, World->GetMaterial(CurrentPosition + P));
-					}
-
-					PointPositions.push_front(RelativePosition);
-
-					World->SetValue(CurrentPosition, ValueMultiplier);
-					World->UpdateChunksAtPosition(CurrentPosition, bAsync);
-				}
-			}
-		}
-	}
-
-	while (!PointPositions.empty())
-	{
-		// Find all connected points
-
-		TSharedPtr<FVoxelData> CurrentData = MakeShareable(new FVoxelData(Depth, WorldGenerator, false));
-
-		FIntVector PointPosition = PointPositions.front();
-		PointPositions.pop_front();
-
-		const int X = PointPosition.X;
-		const int Y = PointPosition.Y;
-		const int Z = PointPosition.Z;
-		const int Index = (X + IntRadius) + (Y + IntRadius) * 2 * IntRadius + (Z + IntRadius) * 2 * IntRadius * 2 * IntRadius;
-
-		if (!Visited[Index])
-		{
-			Queue.resize(0);
-			Queue.push_front(PointPosition);
-
-			while (!Queue.empty())
-			{
-				const FIntVector CurrentPosition = Queue.front();
-				Queue.pop_front();
-
-				const int LX = CurrentPosition.X;
-				const int LY = CurrentPosition.Y;
-				const int LZ = CurrentPosition.Z;
-
-				const int LIndex = (LX + IntRadius) + (LY + IntRadius) * 2 * IntRadius + (LZ + IntRadius) * 2 * IntRadius * 2 * IntRadius;
-
-				if ((-IntRadius <= LX) && (LX < IntRadius)
-					&& (-IntRadius <= LY) && (LY < IntRadius)
-					&& (-IntRadius <= LZ) && (LZ < IntRadius)
-					&& !Visited[LIndex])
-				{
-
-					float Value;
-					FVoxelMaterial Material;
-					Data->GetValueAndMaterial(LX, LY, LZ, Value, Material);
-
-					if (Value < 0)
-					{
-						Visited[LIndex] = true;
-						CurrentData->SetValue(LX, LY, LZ, Value);
-						CurrentData->SetMaterial(LX, LY, LZ, Material);
-
-						// Set external colors
-						TArray<FIntVector> L = {
-							FIntVector(1, 0, 0),
-							FIntVector(0, 1, 0),
-							FIntVector(1, 1, 0),
-							FIntVector(0, 0, 1),
-							FIntVector(1, 0, 1),
-							FIntVector(0, 1, 1),
-							FIntVector(1, 1, 1),
-							FIntVector(-1, 0, 0),
-							FIntVector(0, -1, 0),
-							FIntVector(-1, -1, 0),
-							FIntVector(0, 0, -1),
-							FIntVector(-1, 0, -1),
-							FIntVector(0, -1, -1),
-							FIntVector(-1, -1, -1)
-						};
-						for (auto P : L)
-						{
-							auto Q = CurrentPosition + P;
-
-							CurrentData->SetMaterial(Q.X, Q.Y, Q.Z, Data->GetMaterial(LX, LY, LZ));
-						}
-
-						Queue.push_front(FIntVector(LX - 1, LY - 1, LZ - 1));
-						Queue.push_front(FIntVector(LX + 0, LY - 1, LZ - 1));
-						Queue.push_front(FIntVector(LX + 1, LY - 1, LZ - 1));
-						Queue.push_front(FIntVector(LX - 1, LY + 0, LZ - 1));
-						Queue.push_front(FIntVector(LX + 0, LY + 0, LZ - 1));
-						Queue.push_front(FIntVector(LX + 1, LY + 0, LZ - 1));
-						Queue.push_front(FIntVector(LX - 1, LY + 1, LZ - 1));
-						Queue.push_front(FIntVector(LX + 0, LY + 1, LZ - 1));
-						Queue.push_front(FIntVector(LX + 1, LY + 1, LZ - 1));
-						Queue.push_front(FIntVector(LX - 1, LY - 1, LZ + 0));
-						Queue.push_front(FIntVector(LX + 0, LY - 1, LZ + 0));
-						Queue.push_front(FIntVector(LX + 1, LY - 1, LZ + 0));
-						Queue.push_front(FIntVector(LX - 1, LY + 0, LZ + 0));
-						Queue.push_front(FIntVector(LX + 0, LY + 0, LZ + 0));
-						Queue.push_front(FIntVector(LX + 1, LY + 0, LZ + 0));
-						Queue.push_front(FIntVector(LX - 1, LY + 1, LZ + 0));
-						Queue.push_front(FIntVector(LX + 0, LY + 1, LZ + 0));
-						Queue.push_front(FIntVector(LX + 1, LY + 1, LZ + 0));
-						Queue.push_front(FIntVector(LX - 1, LY - 1, LZ + 1));
-						Queue.push_front(FIntVector(LX + 0, LY - 1, LZ + 1));
-						Queue.push_front(FIntVector(LX + 1, LY - 1, LZ + 1));
-						Queue.push_front(FIntVector(LX - 1, LY + 0, LZ + 1));
-						Queue.push_front(FIntVector(LX + 0, LY + 0, LZ + 1));
-						Queue.push_front(FIntVector(LX + 1, LY + 0, LZ + 1));
-						Queue.push_front(FIntVector(LX - 1, LY + 1, LZ + 1));
-						Queue.push_front(FIntVector(LX + 0, LY + 1, LZ + 1));
-						Queue.push_front(FIntVector(LX + 1, LY + 1, LZ + 1));
-					}
-				}
-			}
-
-
-			AVoxelPart* Part = World->GetWorld()->SpawnActor<AVoxelPart>(Position, World->GetTransform().Rotator());
-
-			Part->SetActorScale3D(World->GetVoxelSize() * FVector::OneVector);
-
-			Part->Init(CurrentData.Get(), World->GetVoxelMaterial(), World);
-		}
-	}
-}
-
-void UVoxelTools::TransformVoxelAsset(UVoxelAsset* InCompressedAsset, UVoxelAsset*& OutCompressedAsset, const FTransform& Transform)
-{
-	if (!InCompressedAsset)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("RotateVoxelAsset: Invalid Asset"));
-		return;
-	}
-
-	FDecompressedVoxelAsset* InAsset;
-	FDecompressedVoxelDataAsset OutAsset;
-	InCompressedAsset->GetDecompressedAsset(InAsset, 1);
-
-	// Compute new bounds
-	FIntVector Min = InAsset->GetBounds().Min;
-	FIntVector Max = InAsset->GetBounds().Max;
-
-	TArray<FIntVector> Corners = {
-		FIntVector(Min.X, Min.Y, Min.Z),
-		FIntVector(Max.X, Min.Y, Min.Z),
-		FIntVector(Min.X, Max.Y, Min.Z),
-		FIntVector(Max.X, Max.Y, Min.Z),
-		FIntVector(Min.X, Min.Y, Max.Z),
-		FIntVector(Max.X, Min.Y, Max.Z),
-		FIntVector(Min.X, Max.Y, Max.Z),
-		FIntVector(Max.X, Max.Y, Max.Z),
-	};
-
-	FIntVector NewMin = FIntVector(MAX_int32, MAX_int32, MAX_int32);
-	FIntVector NewMax = FIntVector(MIN_int32, MIN_int32, MIN_int32);
-
-	for (auto& Corner : Corners)
-	{
-		FVector NewPosition = Transform.TransformPosition((FVector)Corner);
-
-		NewMin.X = FMath::Min(NewMin.X, FMath::FloorToInt(NewPosition.X));
-		NewMin.Y = FMath::Min(NewMin.Y, FMath::FloorToInt(NewPosition.Y));
-		NewMin.Z = FMath::Min(NewMin.Z, FMath::FloorToInt(NewPosition.Z));
-
-		NewMax.X = FMath::Max(NewMax.X, FMath::CeilToInt(NewPosition.X));
-		NewMax.Y = FMath::Max(NewMax.Y, FMath::CeilToInt(NewPosition.Y));
-		NewMax.Z = FMath::Max(NewMax.Z, FMath::CeilToInt(NewPosition.Z));
-	}
-
-	OutAsset.SetHalfSize((NewMax.X - NewMin.X) / 2 + 1, (NewMax.Y - NewMin.Y) / 2 + 1, (NewMax.Z - NewMin.Z) / 2 + 1);
-
-	FVoxelBox OutBounds = OutAsset.GetBounds();
-	for (int X = OutBounds.Min.X; X <= OutBounds.Max.X; X++)
-	{
-		for (int Y = OutBounds.Min.Y; Y <= OutBounds.Max.Y; Y++)
-		{
-			for (int Z = OutBounds.Min.Z; Z <= OutBounds.Max.Z; Z++)
-			{
-				OutAsset.SetValue(X, Y, Z, 1);
-				OutAsset.SetMaterial(X, Y, Z, FVoxelMaterial());
-				OutAsset.SetVoxelType(X, Y, Z, FVoxelType(IgnoreValue, IgnoreMaterial));
-			}
-		}
-	}
-
-	FVoxelBox InBounds = InAsset->GetBounds();
-	for (int X = InBounds.Min.X; X <= InBounds.Max.X; X++)
-	{
-		for (int Y = InBounds.Min.Y; Y <= InBounds.Max.Y; Y++)
-		{
-			for (int Z = InBounds.Min.Z; Z <= InBounds.Max.Z; Z++)
-			{
-				FVector NewPosition = Transform.TransformPosition(FVector(X, Y, Z));
-				int NX = FMath::RoundToInt(NewPosition.X);
-				int NY = FMath::RoundToInt(NewPosition.Y);
-				int NZ = FMath::RoundToInt(NewPosition.Z);
-
-				if (OutBounds.IsInside(NX, NY, NZ))
-				{
-					OutAsset.SetValue(NX, NY, NZ, InAsset->GetValue(X, Y, Z));
-					OutAsset.SetMaterial(NX, NY, NZ, InAsset->GetMaterial(X, Y, Z));
-					OutAsset.SetVoxelType(NX, NY, NZ, InAsset->GetVoxelType(X, Y, Z));
-				}
-			}
-		}
-	}
-	OutCompressedAsset = NewObject<UVoxelDataAsset>();
-	((UVoxelDataAsset*)OutCompressedAsset)->InitFromAsset(&OutAsset);
-}
-
-void UVoxelTools::DownscaleAsset(UVoxelAsset* InCompressedAsset, UVoxelAsset*& OutCompressedAsset, const int HalfOfDownscalingFactor)
-{
-	if (!InCompressedAsset)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("DownscaleAsset: Invalid Asset"));
-		return;
-	}
-	if (HalfOfDownscalingFactor < 1)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("DownscaleAsset: HalfOfDownscalingFactor must be >= 1"));
-		return;
-	}
-
-	FDecompressedVoxelAsset* InAsset;
-	FDecompressedVoxelDataAsset OutAsset;
-	InCompressedAsset->GetDecompressedAsset(InAsset, 1);
-
-	FVoxelBox InBounds = InAsset->GetBounds();
-
-	const int DownscalingFactor = 2 * HalfOfDownscalingFactor;
-
-	FIntVector HalfSize =
-		FIntVector(
-			FMath::CeilToInt(FMath::Max(FMath::Abs(InBounds.Min.X), FMath::Abs(InBounds.Max.X)) / 2.0f / (float)DownscalingFactor),
-			FMath::CeilToInt(FMath::Max(FMath::Abs(InBounds.Min.Y), FMath::Abs(InBounds.Max.Y)) / 2.0f / (float)DownscalingFactor),
-			FMath::CeilToInt(FMath::Max(FMath::Abs(InBounds.Min.Z), FMath::Abs(InBounds.Max.Z)) / 2.0f / (float)DownscalingFactor)
-		);
-
-	OutAsset.SetHalfSize(HalfSize.X, HalfSize.Y, HalfSize.Z);
-
-	FVoxelBox OutBounds = OutAsset.GetBounds();
-	for (int X = OutBounds.Min.X; X <= OutBounds.Max.X; X++)
-	{
-		for (int Y = OutBounds.Min.Y; Y <= OutBounds.Max.Y; Y++)
-		{
-			for (int Z = OutBounds.Min.Z; Z <= OutBounds.Max.Z; Z++)
-			{
-				float TotalValue = 0;
-				int TotalVoxelCount = 0;
-				for (int I = -HalfOfDownscalingFactor; I <= HalfOfDownscalingFactor; I++)
-				{
-					for (int J = -HalfOfDownscalingFactor; J <= HalfOfDownscalingFactor; J++)
-					{
-						for (int K = -HalfOfDownscalingFactor; K <= HalfOfDownscalingFactor; K++)
-						{
-							int A = DownscalingFactor * (X - OutBounds.Min.X) + InBounds.Min.X + I;
-							int B = DownscalingFactor * (Y - OutBounds.Min.Y) + InBounds.Min.Y + J;
-							int C = DownscalingFactor * (Z - OutBounds.Min.Z) + InBounds.Min.Z + K;
-							if (InBounds.IsInside(A, B, C))
-							{
-								TotalVoxelCount++;
-								TotalValue += InAsset->GetValue(A, B, C);
-								// TODO: materials
-							}
-						}
-					}
-				}
-				float NewValue = TotalValue / (float)TotalVoxelCount;
-				OutAsset.SetValue(X, Y, Z, NewValue);
-				OutAsset.SetMaterial(X, Y, Z, FVoxelMaterial(0, 0, 0)); // TODO
-				OutAsset.SetVoxelType(X, Y, Z, FVoxelType(NewValue > 1 - KINDA_SMALL_NUMBER ? IgnoreValue : (NewValue >= 0 ? UseValueIfSameSign : UseValue), IgnoreMaterial));
-			}
-		}
-	}
-
-	OutCompressedAsset = NewObject<UVoxelDataAsset>();
-	((UVoxelDataAsset*)OutCompressedAsset)->InitFromAsset(&OutAsset);
-}
-
-void UVoxelTools::ApplyConvolutionToAsset(UVoxelAsset* InCompressedAsset, UVoxelAsset*& OutCompressedAsset, const F3DConvolutionMatrix& ConvolutionMatrix)
-{
-	if (!InCompressedAsset)
-	{
-		UE_LOG(LogVoxel, Error, TEXT("DownscaleAsset: Invalid Asset"));
-		return;
-	}
-
-	FDecompressedVoxelAsset* InAsset;
-	FDecompressedVoxelDataAsset OutAsset;
-	InCompressedAsset->GetDecompressedAsset(InAsset, 1);
-
-	FVoxelBox InBounds = InAsset->GetBounds();
-
-	OutAsset.SetHalfSize((InBounds.Max.X - InBounds.Min.X) / 2 + 2, (InBounds.Max.Y - InBounds.Min.Y) / 2 + 2, (InBounds.Max.Z - InBounds.Min.Z) / 2 + 2);
-
-	FVoxelBox OutBounds = OutAsset.GetBounds();
-	for (int X = OutBounds.Min.X; X <= OutBounds.Max.X; X++)
-	{
-		for (int Y = OutBounds.Min.Y; Y <= OutBounds.Max.Y; Y++)
-		{
-			for (int Z = OutBounds.Min.Z; Z <= OutBounds.Max.Z; Z++)
-			{
-				float NewValue;
-				EVoxelValueType NewValueType;
-
-				FVoxelMaterial NewMaterial;
-				EVoxelMaterialType NewMaterialType;
-
-				if (InBounds.IsInside(X, Y, Z))
-				{
-					float TotalValue = 0;
-					for (int I = -1; I <= 1; I++)
-					{
-						for (int J = -1; J <= 1; J++)
-						{
-							for (int K = -1; K <= 1; K++)
-							{
-								int A = X - OutBounds.Min.X + InBounds.Min.X + I;
-								int B = Y - OutBounds.Min.Y + InBounds.Min.Y + J;
-								int C = Z - OutBounds.Min.Z + InBounds.Min.Z + K;
-
-								TotalValue += ConvolutionMatrix.GetAt(I, J, K) * (InBounds.IsInside(A, B, C) ? InAsset->GetValue(A, B, C) : 1);
-							}
-						}
-					}
-
-					NewMaterial = InAsset->GetMaterial(X, Y, Z);
-					NewMaterialType = InAsset->GetVoxelType(X, Y, Z).GetMaterialType();
-
-					NewValue = TotalValue;
-					NewValueType = InAsset->GetVoxelType(X, Y, Z).GetValueType();
-				}
-				else
-				{
-					NewMaterial = FVoxelMaterial(0, 0, 0);
-					NewMaterialType = IgnoreMaterial;
-
-					NewValue = 1;
-					NewValueType = IgnoreValue;
-				}
-
-				OutAsset.SetValue(X, Y, Z, NewValue);
-				OutAsset.SetMaterial(X, Y, Z, NewMaterial);
-				OutAsset.SetVoxelType(X, Y, Z, FVoxelType(NewValueType, NewMaterialType));
-			}
-		}
-	}
-
-	OutCompressedAsset = NewObject<UVoxelDataAsset>();
-	((UVoxelDataAsset*)OutCompressedAsset)->InitFromAsset(&OutAsset);
 }

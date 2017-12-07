@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "VoxelThread.h"
 #include "VoxelProceduralMeshComponent.h"
-#include "TransitionDirection.h"
+#include "Direction.h"
 #include <atomic>
 #include "VoxelChunkComponent.generated.h"
 
@@ -14,8 +14,8 @@ class FChunkOctree;
 class FVoxelPolygonizer;
 
 /**
-* Voxel Chunk actor class
-*/
+ * Voxel Chunk actor class
+ */
 UCLASS()
 class UVoxelChunkComponent : public UVoxelProceduralMeshComponent
 {
@@ -26,36 +26,36 @@ public:
 	~UVoxelChunkComponent();
 
 	/**
-	* Init this
-	* @param	NewPosition		Position of this (Minimal corner)
-	* @param	NewDepth		Width = 16 * 2^Depth
-	* @param	NewWorld		VoxelWorld
-	*/
+	 * Init this
+	 * @param	NewPosition		Position of this (Minimal corner)
+	 * @param	NewDepth		Width = 16 * 2^Depth
+	 * @param	NewWorld		VoxelWorld
+	 */
 	void Init(FChunkOctree* NewOctree);
 
 	/**
-	* Update this for terrain changes
-	* @param	bAsync
-	*/
+	 * Update this for terrain changes
+	 * @param	bAsync
+	 */
 	bool Update(bool bAsync);
 
 	bool UpdateFoliage();
 
 	/**
-	* Check if an adjacent chunk has changed its resolution, and update async if needed
-	*/
+	 * Check if an adjacent chunk has changed its resolution, and update async if needed
+	 */
 	void CheckTransitions();
 
 	/**
-	* Schedule destruction of this chunk
-	*/
+	 * Schedule destruction of this chunk
+	 */
 	void Unload();
 
 	void Delete();
 
 	void SetVoxelMaterial(UMaterialInterface* Material);
 
-	bool HasChunkHigherRes(TransitionDirection Direction);
+	bool HasChunkHigherRes(EDirection Direction);
 
 	/**
 	* Copy Task section to PrimaryMesh section

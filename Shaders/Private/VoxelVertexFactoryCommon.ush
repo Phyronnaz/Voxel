@@ -13,7 +13,8 @@ struct FVertexFactoryInterpolantsVSToPS
 	TANGENTTOWORLD_INTERPOLATOR_BLOCK
 
 #if INTERPOLATE_VERTEX_COLOR
-	half4	Color : COLOR0;
+	nointerpolation half2   Indexes : COLOR0;
+    half    Alpha : COLOR1;
 #endif
 
 #if USE_INSTANCING
@@ -60,16 +61,18 @@ void SetUV(inout FVertexFactoryInterpolantsVSToPS Interpolants, int UVIndex, flo
 float4 GetColor(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
 #if INTERPOLATE_VERTEX_COLOR
-	return Interpolants.Color;
+    return float4(Interpolants.Indexes.x, Interpolants.Indexes.y, Interpolants.Alpha, 0);
 #else
-	return 0;
+    return 0;
 #endif
 }
 
 void SetColor(inout FVertexFactoryInterpolantsVSToPS Interpolants, float4 InValue)
 {
 #if INTERPOLATE_VERTEX_COLOR
-	Interpolants.Color = InValue;
+	Interpolants.Indexes.x = InValue.x;
+    Interpolants.Indexes.y = InValue.y;
+    Interpolants.Alpha = InValue.z;
 #endif
 }
 
@@ -94,18 +97,18 @@ void SetLightMapCoordinate(inout FVertexFactoryInterpolantsVSToPS Interpolants, 
 
 float4 GetTangentToWorld2(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
-	return Interpolants.TangentToWorld2;
+    return Interpolants.TangentToWorld2;
 }
 
 float4 GetTangentToWorld0(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
-	return Interpolants.TangentToWorld0;
+    return Interpolants.TangentToWorld0;
 }
 
 void SetTangents(inout FVertexFactoryInterpolantsVSToPS Interpolants, float3 InTangentToWorld0, float3 InTangentToWorld2, float InTangentToWorldSign)
 {
-	Interpolants.TangentToWorld0 = float4(InTangentToWorld0,0);
-	Interpolants.TangentToWorld2 = float4(InTangentToWorld2,InTangentToWorldSign);
+    Interpolants.TangentToWorld0 = float4(InTangentToWorld0, 0);
+    Interpolants.TangentToWorld2 = float4(InTangentToWorld2, InTangentToWorldSign);
 }
 
 
@@ -123,10 +126,10 @@ struct FVertexFactoryInterpolantsVSToPS
 	// UV0, normal xy
 	float4 PackedUVs[1] : TEXCOORD0;
 
-	#if INTERPOLATE_VERTEX_COLOR
+#if INTERPOLATE_VERTEX_COLOR
 		// Only interpolate vertex color if needed by the material pixel shader
 		float4 Color : TEXCOORD1;
-	#endif
+#endif
 #else
 	// UV0, normal xy
 	// UV1, color xy
@@ -167,85 +170,85 @@ void SetUV(inout FVertexFactoryInterpolantsVSToPS Interpolants, int UVIndex, flo
 
 float4 GetColor(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
-	#if NUM_PACKED_UVS == 1
-		#if INTERPOLATE_VERTEX_COLOR
+#if NUM_PACKED_UVS == 1
+#if INTERPOLATE_VERTEX_COLOR
 			return Interpolants.Color;
-		#else
+#else
 			return 0;
-		#endif
-	#else
+#endif
+#else
 		return float4(Interpolants.PackedUVs[1].zw, Interpolants.PackedUVs[2].zw);
-	#endif
+#endif
 }
 
 void SetColor(inout FVertexFactoryInterpolantsVSToPS Interpolants, float4 InValue)
 {
-	#if NUM_PACKED_UVS == 1
-		#if INTERPOLATE_VERTEX_COLOR
+#if NUM_PACKED_UVS == 1
+#if INTERPOLATE_VERTEX_COLOR
 			Interpolants.Color = InValue;
-		#endif
-	#else
+#endif
+#else
 		Interpolants.PackedUVs[1].zw = InValue.xy;
 		Interpolants.PackedUVs[2].zw = InValue.zw;
-	#endif
+#endif
 }
 
 void GetLightMapCoordinates(FVertexFactoryInterpolantsVSToPS Interpolants, out float2 LightmapUV0, out float2 LightmapUV1)
 {
-	#if USE_INTERPOLATOR_345 
+#if USE_INTERPOLATOR_345 
 		LightmapUV0 = Interpolants.PackedInterpolator3.xy;
 		LightmapUV1 = Interpolants.PackedInterpolator4.xy;
-	#else
+#else
 		LightmapUV0 = LightmapUV1 = 0;
-	#endif
+#endif
 }
 
 float2 GetShadowMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
-	#if USE_INTERPOLATOR_345 
+#if USE_INTERPOLATOR_345 
 		return Interpolants.PackedInterpolator5.xy;
-	#else
+#else
 		return float2(0, 0);
-	#endif
+#endif
 }
 
 void SetLightMapCoordinate(inout FVertexFactoryInterpolantsVSToPS Interpolants, float2 InLightMapCoordinate, float2 InShadowMapCoordinate)
 {
-	#if USE_INTERPOLATOR_345
+#if USE_INTERPOLATOR_345
 		Interpolants.PackedInterpolator3.xy = InLightMapCoordinate * float2(1, 0.5);
 		Interpolants.PackedInterpolator4.xy = Interpolants.PackedInterpolator3.xy + float2(0, 0.5);
 		Interpolants.PackedInterpolator5.xy = InShadowMapCoordinate;
-	#endif
+#endif
 }
 
 float4 GetTangentToWorld2(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
-	#if USE_INTERPOLATOR_345
+#if USE_INTERPOLATOR_345
 		return float4(Interpolants.PackedUVs[0].zw, Interpolants.PackedInterpolator3.zw);
-	#else
+#else
 		return float4(0, 0, 0, 1);
-	#endif
+#endif
 }
 
 float4 GetTangentToWorld0(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
-	#if USE_INTERPOLATOR_345
+#if USE_INTERPOLATOR_345
 		return float4(Interpolants.PackedInterpolator4.zw, Interpolants.PackedInterpolator5.zw);
-	#else
+#else
 		return float4(0, 0, 0, 0);
-	#endif
+#endif
 }
 
 void SetTangents(inout FVertexFactoryInterpolantsVSToPS Interpolants, float3 InTangentToWorld0, float3 InTangentToWorld2, float InTangentToWorldSign)
 {
-	#if USE_INTERPOLATOR_345
+#if USE_INTERPOLATOR_345
 		Interpolants.PackedInterpolator4.zw = InTangentToWorld0.xy;
 		Interpolants.PackedInterpolator5.zw = InTangentToWorld0.zz;
 		Interpolants.PackedUVs[0].zw = InTangentToWorld2.xy;
 		Interpolants.PackedInterpolator3.zw = float2(InTangentToWorld2.z,InTangentToWorldSign);
-	#else
+#else
 		Interpolants.PackedUVs[0].zw = 0;
-	#endif
+#endif
 }
 
 #endif

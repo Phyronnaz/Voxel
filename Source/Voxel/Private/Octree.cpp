@@ -39,6 +39,11 @@ FIntVector FOctree::GetMaximalCornerPosition() const
 	return Position + FIntVector(Size() / 2, Size() / 2, Size() / 2);
 }
 
+FVoxelBox FOctree::GetBounds() const
+{
+	return FVoxelBox(GetMinimalCornerPosition(), GetMaximalCornerPosition());
+}
+
 bool FOctree::IsLeaf() const
 {
 	return !bHasChilds;

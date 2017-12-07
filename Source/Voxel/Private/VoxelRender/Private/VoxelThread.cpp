@@ -138,7 +138,16 @@ void FAsyncFoliageTask::DoWork()
 					}
 					else
 					{
-						Rotation = FRotator::ZeroRotator;
+						if (GrassVariety.RandomRotation)
+						{
+							Rotation.Yaw = Stream.FRand() * 360.f;
+							Rotation.Pitch = Stream.FRand() * 360.f;
+							Rotation.Roll = Stream.FRand() * 360.f;
+						}
+						else
+						{
+							Rotation = FRotator::ZeroRotator;
+						}
 					}
 
 					const FVector GrassUp = Rotation.RotateVector(FVector::UpVector).GetSafeNormal();

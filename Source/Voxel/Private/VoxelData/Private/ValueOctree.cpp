@@ -3,12 +3,10 @@
 #include "ValueOctree.h"
 #include "VoxelWorldGenerator.h"
 
-FValueOctree::FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id, bool bMultiplayer)
+FValueOctree::FValueOctree(UVoxelWorldGenerator* WorldGenerator, FIntVector Position, uint8 Depth, uint64 Id)
 	: FOctree(Position, Depth, Id)
 	, WorldGenerator(WorldGenerator)
 	, bIsDirty(false)
-	, bIsNetworkDirty(false)
-	, bMultiplayer(bMultiplayer)
 {
 
 }
@@ -41,7 +39,7 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 
 	if (IsLeaf())
 	{
-		if (UNLIKELY(IsDirty()))
+		if (IsDirty())
 		{
 			for (int I = 0; I < Size.X; I++)
 			{
@@ -125,8 +123,8 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartY, StartZ },
-					{ StartI, StartJ, StartK },
+						{ StartX, StartY, StartZ },
+						{ StartI, StartJ, StartK },
 						Step,
 						{ Size.X, Size.Y, Size.Z },
 						ArraySize);
@@ -136,15 +134,15 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 					// Split Z
 
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartY, StartZBot },
-					{ StartI, StartJ, StartKBot },
+						{ StartX, StartY, StartZBot },
+						{ StartI, StartJ, StartKBot },
 						Step,
 						{ Size.X, Size.Y, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartY, StartZTop },
-					{ StartI, StartJ, StartKTop },
+						{ StartX, StartY, StartZTop },
+						{ StartI, StartJ, StartKTop },
 						Step,
 						{ Size.X, Size.Y, SizeZTop },
 						ArraySize);
@@ -157,15 +155,15 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartYBot, StartZ },
-					{ StartI, StartJBot, StartK },
+						{ StartX, StartYBot, StartZ },
+						{ StartI, StartJBot, StartK },
 						Step,
 						{ Size.X, SizeYBot, Size.Z },
 						ArraySize);
 
 					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartYTop, StartZ },
-					{ StartI, StartJTop, StartK },
+						{ StartX, StartYTop, StartZ },
+						{ StartI, StartJTop, StartK },
 						Step,
 						{ Size.X, SizeYTop, Size.Z },
 						ArraySize);
@@ -175,30 +173,30 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 					// Split Z
 
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartYBot, StartZBot },
-					{ StartI, StartJBot, StartKBot },
+						{ StartX, StartYBot, StartZBot },
+						{ StartI, StartJBot, StartKBot },
 						Step,
 						{ Size.X, SizeYBot, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartYBot, StartZTop },
-					{ StartI, StartJBot, StartKTop },
+						{ StartX, StartYBot, StartZTop },
+						{ StartI, StartJBot, StartKTop },
 						Step,
 						{ Size.X, SizeYBot, SizeZTop },
 						ArraySize);
 
 
 					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartYTop, StartZBot },
-					{ StartI, StartJTop, StartKBot },
+						{ StartX, StartYTop, StartZBot },
+						{ StartI, StartJTop, StartKBot },
 						Step,
 						{ Size.X, SizeYTop, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX, StartY + RealSizeY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartX, StartYTop, StartZTop },
-					{ StartI, StartJTop, StartKTop },
+						{ StartX, StartYTop, StartZTop },
+						{ StartI, StartJTop, StartKTop },
 						Step,
 						{ Size.X, SizeYTop, SizeZTop },
 						ArraySize);
@@ -214,15 +212,15 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartY, StartZ },
-					{ StartIBot, StartJ, StartK },
+						{ StartXBot, StartY, StartZ },
+						{ StartIBot, StartJ, StartK },
 						Step,
 						{ SizeXBot, Size.Y, Size.Z },
 						ArraySize);
 
 					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartY, StartZ },
-					{ StartITop, StartJ, StartK },
+						{ StartXTop, StartY, StartZ },
+						{ StartITop, StartJ, StartK },
 						Step,
 						{ SizeXTop, Size.Y, Size.Z },
 						ArraySize);
@@ -232,30 +230,30 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 					// Split Z
 
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartY, StartZBot },
-					{ StartIBot, StartJ, StartKBot },
+						{ StartXBot, StartY, StartZBot },
+						{ StartIBot, StartJ, StartKBot },
 						Step,
 						{ SizeXBot, Size.Y, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartY, StartZTop },
-					{ StartIBot, StartJ, StartKTop },
+						{ StartXBot, StartY, StartZTop },
+						{ StartIBot, StartJ, StartKTop },
 						Step,
 						{ SizeXBot, Size.Y, SizeZTop },
 						ArraySize);
 
 
 					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartY, StartZBot },
-					{ StartITop, StartJ, StartKBot },
+						{ StartXTop, StartY, StartZBot },
+						{ StartITop, StartJ, StartKBot },
 						Step,
 						{ SizeXTop, Size.Y, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX + RealSizeX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartY, StartZTop },
-					{ StartITop, StartJ, StartKTop },
+						{ StartXTop, StartY, StartZTop },
+						{ StartITop, StartJ, StartKTop },
 						Step,
 						{ SizeXTop, Size.Y, SizeZTop },
 						ArraySize);
@@ -268,29 +266,29 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 				if (StartZ + RealSizeZ < Position.Z || Position.Z <= StartZ)
 				{
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartYBot, StartZ },
-					{ StartIBot, StartJBot, StartK },
+						{ StartXBot, StartYBot, StartZ },
+						{ StartIBot, StartJBot, StartK },
 						Step,
 						{ SizeXBot, SizeYBot, Size.Z },
 						ArraySize);
 
 					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartYTop, StartZ },
-					{ StartIBot, StartJTop, StartK },
+						{ StartXBot, StartYTop, StartZ },
+						{ StartIBot, StartJTop, StartK },
 						Step,
 						{ SizeXBot, SizeYTop, Size.Z },
 						ArraySize);
 
 					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartYBot, StartZ },
-					{ StartITop, StartJBot, StartK },
+						{ StartXTop, StartYBot, StartZ },
+						{ StartITop, StartJBot, StartK },
 						Step,
 						{ SizeXTop, SizeYBot, Size.Z },
 						ArraySize);
 
 					GetChild(StartX + RealSizeX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartYTop, StartZ },
-					{ StartITop, StartJTop, StartK },
+						{ StartXTop, StartYTop, StartZ },
+						{ StartITop, StartJTop, StartK },
 						Step,
 						{ SizeXTop, SizeYTop, Size.Z },
 						ArraySize);
@@ -300,30 +298,30 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 					// Split Z
 
 					GetChild(StartX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartYBot, StartZBot },
-					{ StartIBot, StartJBot, StartKBot },
+						{ StartXBot, StartYBot, StartZBot },
+						{ StartIBot, StartJBot, StartKBot },
 						Step,
 						{ SizeXBot, SizeYBot, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartYBot, StartZTop },
-					{ StartIBot, StartJBot, StartKTop },
+						{ StartXBot, StartYBot, StartZTop },
+						{ StartIBot, StartJBot, StartKTop },
 						Step,
 						{ SizeXBot, SizeYBot, SizeZTop },
 						ArraySize);
 
 
 					GetChild(StartX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartYTop, StartZBot },
-					{ StartIBot, StartJTop, StartKBot },
+						{ StartXBot, StartYTop, StartZBot },
+						{ StartIBot, StartJTop, StartKBot },
 						Step,
 						{ SizeXBot, SizeYTop, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX, StartY + RealSizeY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXBot, StartYTop, StartZTop },
-					{ StartIBot, StartJTop, StartKTop },
+						{ StartXBot, StartYTop, StartZTop },
+						{ StartIBot, StartJTop, StartKTop },
 						Step,
 						{ SizeXBot, SizeYTop, SizeZTop },
 						ArraySize);
@@ -333,30 +331,30 @@ void FValueOctree::GetValuesAndMaterials(float InValues[], FVoxelMaterial InMate
 
 
 					GetChild(StartX + RealSizeX, StartY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartYBot, StartZBot },
-					{ StartITop, StartJBot, StartKBot },
+						{ StartXTop, StartYBot, StartZBot },
+						{ StartITop, StartJBot, StartKBot },
 						Step,
 						{ SizeXTop, SizeYBot, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX + RealSizeX, StartY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartYBot, StartZTop },
-					{ StartITop, StartJBot, StartKTop },
+						{ StartXTop, StartYBot, StartZTop },
+						{ StartITop, StartJBot, StartKTop },
 						Step,
 						{ SizeXTop, SizeYBot, SizeZTop },
 						ArraySize);
 
 
 					GetChild(StartX + RealSizeX, StartY + RealSizeY, StartZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartYTop, StartZBot },
-					{ StartITop, StartJTop, StartKBot },
+						{ StartXTop, StartYTop, StartZBot },
+						{ StartITop, StartJTop, StartKBot },
 						Step,
 						{ SizeXTop, SizeYTop, SizeZBot },
 						ArraySize);
 
 					GetChild(StartX + RealSizeX, StartY + RealSizeY, StartZ + RealSizeZ)->GetValuesAndMaterials(InValues, InMaterials,
-					{ StartXTop, StartYTop, StartZTop },
-					{ StartITop, StartJTop, StartKTop },
+						{ StartXTop, StartYTop, StartZTop },
+						{ StartITop, StartJTop, StartKTop },
 						Step,
 						{ SizeXTop, SizeYTop, SizeZTop },
 						ArraySize);
@@ -370,8 +368,6 @@ void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelM
 {
 	check(IsLeaf());
 	check(IsInOctree(X, Y, Z));
-
-	bIsNetworkDirty = true;
 
 	if (Depth != 0)
 	{
@@ -393,20 +389,10 @@ void FValueOctree::SetValueAndMaterial(int X, int Y, int Z, float Value, FVoxelM
 		if (bSetValue)
 		{
 			Values[Index] = Value;
-
-			if (bMultiplayer)
-			{
-				DirtyValues.Add(Index);
-			}
 		}
 		if (bSetMaterial)
 		{
 			Materials[Index] = Material;
-
-			if (bMultiplayer)
-			{
-				DirtyMaterials.Add(Index);
-			}
 		}
 	}
 }
@@ -489,98 +475,6 @@ void FValueOctree::LoadFromSaveAndGetModifiedPositions(std::deque<FVoxelChunkSav
 	}
 }
 
-void FValueOctree::AddChunksToDiffLists(std::deque<FVoxelValueDiff>& OutValueDiffList, std::deque<FVoxelMaterialDiff>& OutColorDiffList)
-{
-	if (IsLeaf())
-	{
-		if (bIsNetworkDirty)
-		{
-			bIsNetworkDirty = false;
-
-			for (int Index : DirtyValues)
-			{
-				check(0 <= Index && Index < 16 * 16 * 16);
-				OutValueDiffList.push_front(FVoxelValueDiff(Id, Index, Values[Index]));
-			}
-			for (int Index : DirtyMaterials)
-			{
-				OutColorDiffList.push_front(FVoxelMaterialDiff(Id, Index, Materials[Index]));
-			}
-			DirtyValues.Empty(4096);
-			DirtyMaterials.Empty(4096);
-		}
-	}
-	else
-	{
-		for (auto Child : Childs)
-		{
-			Child->AddChunksToDiffLists(OutValueDiffList, OutColorDiffList);
-		}
-	}
-}
-
-void FValueOctree::LoadFromDiffListsAndGetModifiedPositions(std::deque<FVoxelValueDiff>& ValuesDiffs, std::deque<FVoxelMaterialDiff>& MaterialsDiffs, std::deque<FIntVector>& OutModifiedPositions)
-{
-	if (ValuesDiffs.empty() && MaterialsDiffs.empty())
-	{
-		return;
-	}
-
-	if (Depth == 0)
-	{
-		// Values
-		while (!ValuesDiffs.empty() && ValuesDiffs.front().Id == Id)
-		{
-			if (!IsDirty())
-			{
-				SetAsDirty();
-			}
-
-			check(0 <= ValuesDiffs.front().Index && ValuesDiffs.front().Index < 16 * 16 * 16);
-			Values[ValuesDiffs.front().Index] = ValuesDiffs.front().Value;
-
-			int X, Y, Z;
-			CoordinatesFromIndex(ValuesDiffs.front().Index, X, Y, Z);
-			OutModifiedPositions.push_front(FIntVector(X, Y, Z) + GetMinimalCornerPosition());
-
-			ValuesDiffs.pop_front();
-		}
-		// Colors
-		while (!MaterialsDiffs.empty() && MaterialsDiffs.front().Id == Id)
-		{
-			if (!IsDirty())
-			{
-				SetAsDirty();
-			}
-
-			Materials[MaterialsDiffs.front().Index] = MaterialsDiffs.front().Material;
-
-			int X, Y, Z;
-			CoordinatesFromIndex(MaterialsDiffs.front().Index, X, Y, Z);
-			OutModifiedPositions.push_front(FIntVector(X, Y, Z) + GetMinimalCornerPosition());
-
-			MaterialsDiffs.pop_front();
-		}
-	}
-	else
-	{
-		uint64 Pow = IntPow9(Depth);
-		if ((!ValuesDiffs.empty() && Id / Pow == ValuesDiffs.front().Id / Pow) || (!MaterialsDiffs.empty() && Id / Pow == MaterialsDiffs.front().Id / Pow))
-		{
-			if (IsLeaf())
-			{
-				bIsDirty = true;
-				CreateChilds();
-			}
-			for (auto Child : Childs)
-			{
-				Child->LoadFromDiffListsAndGetModifiedPositions(ValuesDiffs, MaterialsDiffs, OutModifiedPositions);
-			}
-		}
-	}
-}
-
-
 void FValueOctree::CreateChilds()
 {
 	check(IsLeaf());
@@ -590,14 +484,14 @@ void FValueOctree::CreateChilds()
 	int d = Size() / 4;
 	uint64 Pow = IntPow9(Depth - 1);
 
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow, bMultiplayer));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow, bMultiplayer));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow, bMultiplayer));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow, bMultiplayer));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow, bMultiplayer));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow, bMultiplayer));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow, bMultiplayer));
-	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow, bMultiplayer));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, -d), Depth - 1, Id + 1 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, -d), Depth - 1, Id + 2 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, -d), Depth - 1, Id + 3 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, -d), Depth - 1, Id + 4 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, -d, +d), Depth - 1, Id + 5 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, -d, +d), Depth - 1, Id + 6 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(-d, +d, +d), Depth - 1, Id + 7 * Pow));
+	Childs.Add(new FValueOctree(WorldGenerator, Position + FIntVector(+d, +d, +d), Depth - 1, Id + 8 * Pow));
 
 	bHasChilds = true;
 	check(!IsLeaf() == (Childs.Num() == 8));
@@ -684,54 +578,3 @@ void FValueOctree::GetDirtyChunksPositions(std::deque<FIntVector>& OutPositions)
 		}
 	}
 }
-
-//ValueOctree* ValueOctree::GetCopy()
-//{
-//	ValueOctree*  NewOctree = new ValueOctree(WorldGenerator, Position, Depth, Id);
-//
-//	if (Depth == 0)
-//	{
-//		TArray<float, TFixedAllocator<16 * 16 * 16>> ValuesCopy;
-//		TArray<FColor, TFixedAllocator<16 * 16 * 16>> ColorsCopy;
-//
-//		if (IsDirty())
-//		{
-//			ValuesCopy.SetNumUninitialized(4096);
-//			ColorsCopy.SetNumUninitialized(4096);
-//
-//			for (int X = 0; X < 16; X++)
-//			{
-//				for (int Y = 0; Y < 16; Y++)
-//				{
-//					for (int Z = 0; Z < 16; Z++)
-//					{
-//						ValuesCopy[X + 16 * Y + 16 * 16 * Z] = Values[X + 16 * Y + 16 * 16 * Z];
-//						ColorsCopy[X + 16 * Y + 16 * 16 * Z] = Colors[X + 16 * Y + 16 * 16 * Z];
-//					}
-//				}
-//			}
-//		}
-//
-//		NewOctree->Values = ValuesCopy;
-//		NewOctree->Colors = ColorsCopy;
-//		NewOctree->bHasChilds = false;
-//		NewOctree->bIsDirty = bIsDirty;
-//	}
-//	else if (IsLeaf())
-//	{
-//		NewOctree->bHasChilds = false;
-//		check(!bIsDirty);
-//		NewOctree->bIsDirty = false;
-//	}
-//	else
-//	{
-//		NewOctree->bHasChilds = true;
-//		check(bIsDirty);
-//		NewOctree->bIsDirty = true;
-//		for (auto Child : Childs)
-//		{
-//			NewOctree->Childs.Add(Child->GetCopy());
-//		}
-//	}
-//	return NewOctree;
-//}

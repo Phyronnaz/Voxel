@@ -1,3 +1,5 @@
+// Copyright 2017 Phyronnaz
+
 #include "VoxelWorldDetails.h"
 #include "VoxelWorld.h"
 #include "VoxelWorldEditor.h"

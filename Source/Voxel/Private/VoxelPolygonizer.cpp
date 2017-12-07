@@ -45,12 +45,13 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		}
 	}
 
-	Data->BeginGet();
 	{
 		SCOPE_CYCLE_COUNTER(STAT_CACHE);
 
 		FIntVector Size(CHUNKSIZE + 3, CHUNKSIZE + 3, CHUNKSIZE + 3);
+		Data->BeginGet();
 		Data->GetValuesAndMaterials(CachedValues, CachedMaterials, ChunkPosition - FIntVector(1, 1, 1) * Step(), FIntVector::ZeroValue, Step(), Size, Size);
+		Data->EndGet();
 
 		// Cache signs
 		for (int CubeX = 0; CubeX < 6; CubeX++)
@@ -95,7 +96,6 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 	std::deque<FVector> Vertices;
 	std::deque<FColor> Colors;
 	std::deque<int32> Triangles;
-	std::deque<TPair<int32, int32>> VerticesWithSamePosition;
 	int VerticesSize = 0;
 	int TrianglesSize = 0;
 
@@ -113,6 +113,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 					{
 						continue;
 					}
+					Data->BeginGet();
 					for (int LocalX = 0; LocalX < 3; LocalX++)
 					{
 						for (int LocalY = 0; LocalY < 3; LocalY++)
@@ -175,8 +176,6 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 										| ((CornerValues[6] > 0) << 6)
 										| ((CornerValues[7] > 0) << 7)));
 
-									const FVoxelMaterial CellMaterial = CornerMaterials[0];
-
 									check(0 <= CaseCode && CaseCode < 256);
 									unsigned char CellClass = Transvoxel::regularCellClass[CaseCode];
 									const unsigned short* VertexData = Transvoxel::regularVertexData[CaseCode];
@@ -213,24 +212,8 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 										// fourth bit: vertex isn't cached
 										const short CacheDirection = EdgeCode >> 12;
 
-										// Force vertex creation when colors are different
-										bool ForceVertexCreation = false;
-										if ((ValidityMask & CacheDirection) == CacheDirection) // Avoid accessing to invalid value
-										{
-											FVoxelMaterial Material;
-											float Value;
-											GetValueAndMaterialNoCache(
-												(X - static_cast<bool>((CacheDirection & 0x01) != 0)) * Step(),
-												(Y - static_cast<bool>((CacheDirection & 0x02) != 0)) * Step(),
-												(Z - static_cast<bool>((CacheDirection & 0x04) != 0)) * Step(),
-												Value,
-												Material
-											);
 
-											ForceVertexCreation = !CellMaterial.HasSameIndexesAs(Material);
-										}
-
-										if ((ValidityMask & CacheDirection) != CacheDirection || ForceVertexCreation)
+										if ((ValidityMask & CacheDirection) != CacheDirection)
 										{
 											// If we are on one the lower edges of the chunk, or precedent color is not the same as current one
 
@@ -292,8 +275,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 
 												if (FMath::Abs(Q.X - FMath::RoundToInt(Q.X)) < KINDA_SMALL_NUMBER &&
 													FMath::Abs(Q.Y - FMath::RoundToInt(Q.Y)) < KINDA_SMALL_NUMBER &&
-													FMath::Abs(Q.Z - FMath::RoundToInt(Q.Z)) < KINDA_SMALL_NUMBER &&
-													!ForceVertexCreation)
+													FMath::Abs(Q.Z - FMath::RoundToInt(Q.Z)) < KINDA_SMALL_NUMBER)
 												{
 													Q.X = FMath::RoundToInt(Q.X);
 													Q.Y = FMath::RoundToInt(Q.Y);
@@ -322,14 +304,9 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 											if (bCreateVertex)
 											{
 												Vertices.push_front(Q);
-												Colors.push_front(FVoxelMaterial(CellMaterial.Index1, CellMaterial.Index2, Alpha).ToFColor());
+												FVoxelMaterial Material = (CornerValues[IndexVerticeA] <= 0) ? CornerMaterials[IndexVerticeA] : CornerMaterials[IndexVerticeB];
+												Colors.push_front(FVoxelMaterial(Material.Index1, Material.Index2, Alpha).ToFColor());
 												VerticesSize++;
-
-												if (ForceVertexCreation)
-												{
-													const int CachedIndex = LoadVertex(X, Y, Z, CacheDirection, EdgeIndex);
-													VerticesWithSamePosition.push_front(TPair<int32, int32>(CachedIndex, VertexIndex));
-												}
 											}
 										}
 										else
@@ -340,7 +317,6 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 										// If own vertex, save it
 										if (CacheDirection & 0x08)
 										{
-											check(!ForceVertexCreation);
 											SaveVertex(X, Y, Z, EdgeIndex, VertexIndex);
 										}
 
@@ -359,11 +335,11 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 							}
 						}
 					}
+					Data->EndGet();
 				}
 			}
 		}
 	}
-	Data->EndGet();
 
 
 	if (VerticesSize < 3)
@@ -435,25 +411,9 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 		FilteredVertexCount = FilteredVertexIndex;
 		OutSection.ProcVertexBuffer.SetNum(FilteredVertexCount);
 
-		// Create bijection for VerticesWithSamePosition
-		TArray<int32> RealNormalIndex;
-		RealNormalIndex.SetNumUninitialized(VerticesSize);
-		for (int i = 0; i < VerticesSize; i++)
-		{
-			RealNormalIndex[i] = i;
-		}
-		for (auto P : VerticesWithSamePosition)
-		{
-			const int32 RealIndex = P.Get<0>();
-			const int32 AddedIndex = P.Get<1>();
-			RealNormalIndex[AddedIndex] = RealIndex;
-			check(RealNormalIndex[RealIndex] == RealIndex);
-		}
-
 		// Normal array to compute normals while iterating over triangles
 		TArray<FVector> Normals;
 		Normals.SetNumZeroed(FilteredVertexCount); // Zeroed because +=
-
 
 		VerticesTriangles.SetNum(FilteredVertexCount);
 
@@ -494,13 +454,13 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 			{
 				// Compute normals
 
-				FVector PA = AllVertex[VerticesSize - 1 - RealNormalIndex[A]];
-				FVector PB = AllVertex[VerticesSize - 1 - RealNormalIndex[B]];
-				FVector PC = AllVertex[VerticesSize - 1 - RealNormalIndex[C]];
+				FVector PA = AllVertex[VerticesSize - 1 - A];
+				FVector PB = AllVertex[VerticesSize - 1 - B];
+				FVector PC = AllVertex[VerticesSize - 1 - C];
 
-				int32 FA = AllToFiltered[VerticesSize - 1 - RealNormalIndex[A]];
-				int32 FB = AllToFiltered[VerticesSize - 1 - RealNormalIndex[B]];
-				int32 FC = AllToFiltered[VerticesSize - 1 - RealNormalIndex[C]];
+				int32 FA = AllToFiltered[VerticesSize - 1 - A];
+				int32 FB = AllToFiltered[VerticesSize - 1 - B];
+				int32 FC = AllToFiltered[VerticesSize - 1 - C];
 
 				FVector Normal = FVector::CrossProduct(PB - PA, PC - PA).GetSafeNormal();
 				if (FA != -1)
@@ -527,23 +487,6 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 			ProcMeshVertex.Normal = Normals[i].GetSafeNormal();
 
 			ProcMeshVertex.Position = bComputeTransitions ? GetTranslated(ProcMeshVertex.Position, ProcMeshVertex.Normal) : ProcMeshVertex.Position;
-		}
-		for (auto P : VerticesWithSamePosition)
-		{
-			const int32 RealIndex = P.Get<0>();
-			const int32 AddedIndex = P.Get<1>();
-
-			const int32 FilteredRealIndex = AllToFiltered[VerticesSize - 1 - RealIndex];
-			const int32 FilteredAddedIndex = AllToFiltered[VerticesSize - 1 - AddedIndex];
-
-			if (FilteredRealIndex != -1 && FilteredAddedIndex != -1)
-			{
-				FVoxelProcMeshVertex Real = OutSection.ProcVertexBuffer[FilteredRealIndex];
-				FVoxelProcMeshVertex& Added = OutSection.ProcVertexBuffer[FilteredAddedIndex];
-
-				Added.Position = Real.Position;
-				Added.Normal = Real.Normal;
-			}
 		}
 	}
 
@@ -744,7 +687,7 @@ void FVoxelPolygonizer::CreateSection(FVoxelProcMeshSection& OutSection)
 
 			for (int DirectionIndex = 0; DirectionIndex < 6; DirectionIndex++)
 			{
-				auto Direction = (TransitionDirection)DirectionIndex;
+				auto Direction = (EDirection)DirectionIndex;
 
 				if (ChunkHasHigherRes[Direction])
 				{
@@ -1095,7 +1038,7 @@ void FVoxelPolygonizer::GetValueAndMaterialFromCache(int X, int Y, int Z, float&
 	OutMaterial = CachedMaterials[I + (CHUNKSIZE + 3) * J + (CHUNKSIZE + 3) * (CHUNKSIZE + 3) * K];
 }
 
-void FVoxelPolygonizer::Get2DValueAndMaterial(TransitionDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial)
+void FVoxelPolygonizer::Get2DValueAndMaterial(EDirection Direction, int X, int Y, float& OutValue, FVoxelMaterial& OutMaterial)
 {
 	//SCOPE_CYCLE_COUNTER(STAT_GET2DVALUEANDCOLOR);
 	int GX, GY, GZ;
@@ -1134,7 +1077,7 @@ int FVoxelPolygonizer::LoadVertex(int X, int Y, int Z, short Direction, short Ed
 }
 
 
-void FVoxelPolygonizer::SaveVertex2D(TransitionDirection Direction, int X, int Y, short EdgeIndex, int Index)
+void FVoxelPolygonizer::SaveVertex2D(EDirection Direction, int X, int Y, short EdgeIndex, int Index)
 {
 	if (EdgeIndex == 8 || EdgeIndex == 9)
 	{
@@ -1149,7 +1092,7 @@ void FVoxelPolygonizer::SaveVertex2D(TransitionDirection Direction, int X, int Y
 	Cache2D[Direction][X][Y][EdgeIndex] = Index;
 }
 
-int FVoxelPolygonizer::LoadVertex2D(TransitionDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex)
+int FVoxelPolygonizer::LoadVertex2D(EDirection Direction, int X, int Y, short CacheDirection, short EdgeIndex)
 {
 	bool XIsDifferent = static_cast<bool>((CacheDirection & 0x01) != 0);
 	bool YIsDifferent = static_cast<bool>((CacheDirection & 0x02) != 0);
@@ -1319,7 +1262,7 @@ void FVoxelPolygonizer::InterpolateZ(const int X, const int Y, int MinZ, int Max
 
 
 
-void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, int MinX, int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateX2D(EDirection Direction, int MinX, int MaxX, const int Y, FVector& OutVector, uint8& OutAlpha)
 {
 	while (MaxX - MinX != 1)
 	{
@@ -1363,7 +1306,7 @@ void FVoxelPolygonizer::InterpolateX2D(TransitionDirection Direction, int MinX, 
 	OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 }
 
-void FVoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, int X, int MinY, int MaxY, FVector& OutVector, uint8& OutAlpha)
+void FVoxelPolygonizer::InterpolateY2D(EDirection Direction, int X, int MinY, int MaxY, FVector& OutVector, uint8& OutAlpha)
 {
 	while (MaxY - MinY != 1)
 	{
@@ -1407,7 +1350,7 @@ void FVoxelPolygonizer::InterpolateY2D(TransitionDirection Direction, int X, int
 	OutAlpha = t * MaterialAtA.Alpha + (1 - t) * MaterialAtB.Alpha;
 }
 
-void FVoxelPolygonizer::GlobalToLocal2D(int Size, TransitionDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ)
+void FVoxelPolygonizer::GlobalToLocal2D(int Size, EDirection Direction, int GX, int GY, int GZ, int& OutLX, int& OutLY, int& OutLZ)
 {
 	const int S = Size;
 	switch (Direction)
@@ -1448,7 +1391,7 @@ void FVoxelPolygonizer::GlobalToLocal2D(int Size, TransitionDirection Direction,
 	}
 }
 
-void FVoxelPolygonizer::Local2DToGlobal(int Size, TransitionDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ)
+void FVoxelPolygonizer::Local2DToGlobal(int Size, EDirection Direction, int LX, int LY, int LZ, int& OutGX, int& OutGY, int& OutGZ)
 {
 	const int S = Size;
 	switch (Direction)

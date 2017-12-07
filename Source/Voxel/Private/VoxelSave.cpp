@@ -88,35 +88,3 @@ std::deque<FVoxelChunkSave> FVoxelWorldSave::GetChunksList() const
 
 	return ChunksList;
 }
-
-FVoxelValueDiff::FVoxelValueDiff()
-	: Id(-1)
-	, Index(-1)
-	, Value(0)
-{
-
-}
-
-FVoxelValueDiff::FVoxelValueDiff(uint64 Id, int Index, float Value)
-	: Id(Id)
-	, Index(Index)
-	, Value(Value)
-{
-
-}
-
-FVoxelMaterialDiff::FVoxelMaterialDiff()
-	: Id(-1)
-	, Index(-1)
-	, Material()
-{
-
-}
-
-FVoxelMaterialDiff::FVoxelMaterialDiff(uint64 Id, int Index, FVoxelMaterial Material)
-	: Id(Id)
-	, Index(Index)
-	, Material(Material)
-{
-
-}

@@ -7,7 +7,6 @@
 #include "VoxelBox.h"
 #include "VoxelSave.h"
 #include "VoxelGrassType.h"
-#include "VoxelNetworking.h"
 #include "VoxelWorldGenerator.h"
 #include "GameFramework/Actor.h"
 #include "Templates/SubclassOf.h"
@@ -51,8 +50,6 @@ public:
 
 	void AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker);
 
-	void TriggerOnClientConnection();
-
 	FORCEINLINE AVoxelWorldEditorInterface	* GetVoxelWorldEditor() const;
 	FORCEINLINE FVoxelData* GetData() const;
 	FORCEINLINE UVoxelWorldGenerator* GetWorldGenerator() const;
@@ -64,6 +61,7 @@ public:
 	FORCEINLINE bool GetComputeTransitions() const;
 	FORCEINLINE bool GetComputeCollisions() const;
 	FORCEINLINE bool GetComputeExtendedCollisions();
+	FORCEINLINE uint8 GetMaxDepthToGenerateCollisions() const;
 	FORCEINLINE bool GetDebugCollisions() const;
 	FORCEINLINE float GetDeletionDelay() const;
 	FORCEINLINE float GetNormalThresholdForSimplification() const;
@@ -97,6 +95,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		FVector LocalToGlobal(const FIntVector& Position) const;
 
+	FVector LocalToGlobal(const FVector& Position) const;
+
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		TArray<FIntVector> GetNeighboringPositions(const FVector& GlobalPosition) const;
 
@@ -121,6 +121,12 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		bool IsInWorld(const FIntVector& Position) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		bool GetIntersection(const FIntVector& Start, const FIntVector& End, FVector& OutGlobalPosition, FIntVector& OutVoxelPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel")
+		FVector GetNormal(const FIntVector& Position) const;
 
 	/**
 	 * Get value at position
@@ -164,16 +170,6 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel")
 		void LoadFromSave(const FVoxelWorldSave& Save, bool bReset = true);
-
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void StartServer(const FString& Ip, const int32 Port);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void ConnectClient(const FString& Ip, const int32 Port);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel")
-		void SendWorldToClients(bool bOnlyToNewConnections = true);
 
 protected:
 	// Called when the game starts or when spawned
@@ -227,6 +223,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		bool bComputeExtendedCollisions;
 
+	// Inclusive
+	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay, meta = (EditCondition = "bComputeExtendedCollisions"))
+		uint8 MaxDepthToGenerateCollisions;
+
 	UPROPERTY(EditAnywhere, Category = "Voxel", AdvancedDisplay)
 		bool bDebugCollisions;
 
@@ -246,27 +246,14 @@ private:
 		int FoliageThreadCount;
 
 
-	UPROPERTY(EditAnywhere, Category = "Multiplayer")
-		bool bMultiplayer;
-
-	UPROPERTY(EditAnywhere, Category = "Multiplayer", meta = (EditCondition = "bMultiplayer"))
-		float MultiplayerSyncRate;
-
-
 	UPROPERTY()
 		UVoxelWorldGenerator* InstancedWorldGenerator;
 
 	UPROPERTY()
 		AVoxelWorldEditorInterface* VoxelWorldEditor;
 
-
-	FVoxelTcpServer TcpServer;
-	FVoxelTcpClient TcpClient;
-
 	FVoxelData* Data;
 	FVoxelRender* Render;
-
-	FThreadSafeCounter OnClientConnectionTrigger;
 
 	bool bIsCreated;
 
@@ -279,7 +266,4 @@ private:
 
 	void CreateWorld();
 	void DestroyWorld();
-
-	void ReceiveData();
-	void SendData();
 };

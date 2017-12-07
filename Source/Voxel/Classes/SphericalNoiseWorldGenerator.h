@@ -27,6 +27,7 @@ public:
 
 	virtual void GetValuesAndMaterials(float Values[], FVoxelMaterial Materials[], const FIntVector& Start, const FIntVector& StartIndex, const int Step, const FIntVector& Size, const FIntVector& ArraySize) const override;
 	virtual void SetVoxelWorld(AVoxelWorld* VoxelWorld) override;
+	virtual FVector GetUpVector(int X, int Y, int Z) const override;
 
 private:
 	FastNoise Noise;

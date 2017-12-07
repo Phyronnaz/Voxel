@@ -1,5 +1,7 @@
 // Copyright 2017 Phyronnaz
 
+#pragma warning( disable : 4800 )
+
 #include "VoxelRender.h"
 #include "VoxelPrivate.h"
 #include "VoxelWorld.h"
@@ -337,7 +339,7 @@ FChunkOctree* FVoxelRender::GetChunkOctreeAt(const FIntVector& Position) const
 	return MainOctree->GetLeaf(Position);
 }
 
-FChunkOctree* FVoxelRender::GetAdjacentChunk(TransitionDirection Direction, const FIntVector& Position, int Size) const
+FChunkOctree* FVoxelRender::GetAdjacentChunk(EDirection Direction, const FIntVector& Position, int Size) const
 {
 	const int S = Size;
 	TArray<FIntVector> L = {
@@ -390,4 +392,9 @@ void FVoxelRender::Destroy()
 FVector FVoxelRender::GetGlobalPosition(const FIntVector& LocalPosition)
 {
 	return World->LocalToGlobal(LocalPosition) + ChunksParent->GetActorLocation() - World->GetActorLocation();
+}
+
+void FVoxelRender::RemoveChunkFromQueue(FChunkOctree* Chunk)
+{
+	ChunksToUpdate.Remove(Chunk);
 }

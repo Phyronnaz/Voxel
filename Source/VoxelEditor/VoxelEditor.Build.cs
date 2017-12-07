@@ -18,6 +18,12 @@ public class VoxelEditor : ModuleRules
                 "VoxelEditor/Private",
             });
 
+        AddEngineThirdPartyPrivateStaticDependencies(Target,
+            "zlib",
+            "UElibPNG",
+            "UElibJPG"
+        );
+
         DynamicallyLoadedModuleNames.AddRange(
             new string[] {
                 "AssetTools",
@@ -41,6 +47,7 @@ public class VoxelEditor : ModuleRules
                 "Voxel",
                 "UnrealEd",
                 "Landscape",
+                "LandscapeEditor",
             });
 
         PrivateIncludePathModuleNames.AddRange(

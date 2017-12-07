@@ -23,8 +23,6 @@ AVoxelWorld::AVoxelWorld()
 	, Seed(100)
 	, MeshThreadCount(4)
 	, FoliageThreadCount(4)
-	, bMultiplayer(false)
-	, MultiplayerSyncRate(10)
 	, Render(nullptr)
 	, Data(nullptr)
 	, InstancedWorldGenerator(nullptr)
@@ -47,10 +45,6 @@ AVoxelWorld::AVoxelWorld()
 	RootComponent = TouchCapsule;
 
 	WorldGenerator = TSubclassOf<UVoxelWorldGenerator>(UFlatWorldGenerator::StaticClass());
-
-	OnClientConnectionTrigger.Reset();
-
-	TcpServer.SetWorld(this);
 }
 
 AVoxelWorld::~AVoxelWorld()
@@ -85,29 +79,6 @@ void AVoxelWorld::Tick(float DeltaTime)
 	if (IsCreated())
 	{
 		Render->Tick(DeltaTime);
-	}
-
-	if (bMultiplayer)
-	{
-		if (TcpClient.IsValid())
-		{
-			ReceiveData();
-		}
-		else if (TcpServer.IsValid())
-		{
-			TimeSinceSync += DeltaTime;
-			if (TimeSinceSync > 1.f / MultiplayerSyncRate)
-			{
-				TimeSinceSync = 0;
-				SendData();
-
-				if (OnClientConnectionTrigger.GetValue() > 0)
-				{
-					OnClientConnectionTrigger.Reset();
-					OnClientConnection.Broadcast();
-				}
-			}
-		}
 	}
 }
 
@@ -209,7 +180,6 @@ void AVoxelWorld::SetMaterial(const FIntVector& Position, const FVoxelMaterial& 
 	}
 }
 
-
 void AVoxelWorld::GetSave(FVoxelWorldSave& OutSave) const
 {
 	Data->GetSave(OutSave);
@@ -233,90 +203,6 @@ void AVoxelWorld::LoadFromSave(const FVoxelWorldSave& Save, bool bReset)
 	else
 	{
 		UE_LOG(LogVoxel, Error, TEXT("LoadFromSave: Current Depth is %d while Save one is %d"), Depth, Save.Depth);
-	}
-}
-
-void AVoxelWorld::StartServer(const FString& Ip, const int32 Port)
-{
-	if (TcpClient.IsValid())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Cannot start server: client already running"));
-	}
-	else
-	{
-		TcpServer.StartTcpServer(Ip, Port);
-		UE_LOG(LogVoxel, Log, TEXT("Server started"));
-	}
-}
-
-void AVoxelWorld::ConnectClient(const FString& Ip, const int32 Port)
-{
-	if (TcpServer.IsValid())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Cannot connect client: server already running"));
-	}
-	else
-	{
-		TcpClient.ConnectTcpClient(Ip, Port);
-		UE_LOG(LogVoxel, Log, TEXT("Client started"));
-	}
-}
-
-void AVoxelWorld::SendWorldToClients(bool bOnlyToNewConnections /*= true*/)
-{
-	if (!TcpServer.IsValid())
-	{
-		UE_LOG(LogVoxel, Error, TEXT("Cannot sent world to client if not server"));
-	}
-	else
-	{
-		UE_LOG(LogVoxel, Log, TEXT("Sending world to clients"));
-		FVoxelWorldSave Save;
-		GetSave(Save);
-		TcpServer.SendSave(Save, bOnlyToNewConnections);
-	}
-}
-
-void AVoxelWorld::ReceiveData()
-{
-	if (TcpClient.IsValid())
-	{
-		TcpClient.UpdateExpectedSize();
-		if (TcpClient.IsNextUpdateRemoteLoad())
-		{
-			FVoxelWorldSave Save;
-			TcpClient.ReceiveSave(Save);
-			LoadFromSave(Save, true);
-		}
-		else
-		{
-			std::deque<FIntVector> ModifiedPositions;
-			std::deque<FVoxelValueDiff> ValueDiffs;
-			std::deque<FVoxelMaterialDiff> MaterialDiffs;
-
-			TcpClient.ReceiveDiffs(ValueDiffs, MaterialDiffs);
-
-			Data->LoadFromDiffListsAndGetModifiedPositions(ValueDiffs, MaterialDiffs, ModifiedPositions);
-
-			for (auto Position : ModifiedPositions)
-			{
-				UpdateChunksAtPosition(Position, true);
-				DrawDebugPoint(GetWorld(), LocalToGlobal(Position), 10, FColor::Magenta, false, 1.1f / MultiplayerSyncRate);
-			}
-		}
-	}
-}
-
-void AVoxelWorld::SendData()
-{
-	if (TcpServer.IsValid())
-	{
-		std::deque<FVoxelValueDiff> ValueDiffs;
-		std::deque<FVoxelMaterialDiff> MaterialDiffs;
-		Data->GetDiffLists(ValueDiffs, MaterialDiffs);
-
-		TcpServer.SendValueDiffs(ValueDiffs);
-		TcpServer.SendMaterialDiffs(MaterialDiffs);
 	}
 }
 
@@ -375,6 +261,11 @@ bool AVoxelWorld::GetComputeExtendedCollisions()
 	return bComputeExtendedCollisions;
 }
 
+uint8 AVoxelWorld::GetMaxDepthToGenerateCollisions() const
+{
+	return MaxDepthToGenerateCollisions;
+}
+
 bool AVoxelWorld::GetDebugCollisions() const
 {
 	return bDebugCollisions;
@@ -413,7 +304,12 @@ FIntVector AVoxelWorld::GlobalToLocal(const FVector& Position) const
 
 FVector AVoxelWorld::LocalToGlobal(const FIntVector& Position) const
 {
-	return GetTransform().TransformPosition(GetVoxelSize() * (FVector)Position);
+	return LocalToGlobal((FVector)Position);
+}
+
+FVector AVoxelWorld::LocalToGlobal(const FVector& Position) const
+{
+	return GetTransform().TransformPosition(GetVoxelSize() * Position);
 }
 
 TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPosition) const
@@ -428,7 +324,7 @@ TArray<FIntVector> AVoxelWorld::GetNeighboringPositions(const FVector& GlobalPos
 		FIntVector(FMath::CeilToInt(P.X) , FMath::FloorToInt(P.Y), FMath::CeilToInt(P.Z)),
 		FIntVector(FMath::FloorToInt(P.X), FMath::CeilToInt(P.Y) , FMath::CeilToInt(P.Z)),
 		FIntVector(FMath::CeilToInt(P.X) , FMath::CeilToInt(P.Y) , FMath::CeilToInt(P.Z))
-	});
+		});
 }
 
 void AVoxelWorld::UpdateChunksAtPosition(const FIntVector& Position, bool bAsync)
@@ -449,11 +345,6 @@ void AVoxelWorld::UpdateAll(bool bAsync)
 void AVoxelWorld::AddInvoker(TWeakObjectPtr<UVoxelInvokerComponent> Invoker)
 {
 	Render->AddInvoker(Invoker);
-}
-
-void AVoxelWorld::TriggerOnClientConnection()
-{
-	OnClientConnectionTrigger.Increment();
 }
 
 void AVoxelWorld::CreateWorld()
@@ -488,7 +379,7 @@ void AVoxelWorld::CreateWorld()
 	InstancedWorldGenerator->SetVoxelWorld(this);
 
 	// Create Data
-	Data = new FVoxelData(Depth, InstancedWorldGenerator, bMultiplayer);
+	Data = new FVoxelData(Depth, InstancedWorldGenerator);
 #if DO_CHECK
 	Data->TestWorldGenerator();
 #endif
@@ -549,10 +440,7 @@ void AVoxelWorld::CreateInEditor()
 			DestroyWorld();
 		}
 
-		const bool bTmp = bMultiplayer;
-		bMultiplayer = false;
 		CreateWorld();
-		bMultiplayer = bTmp;
 
 		bComputeCollisions = false;
 
@@ -591,6 +479,100 @@ int AVoxelWorld::GetDepthAt(const FIntVector& Position) const
 bool AVoxelWorld::IsInWorld(const FIntVector& Position) const
 {
 	return Data->IsInWorld(Position.X, Position.Y, Position.Z);
+}
+
+bool AVoxelWorld::GetIntersection(const FIntVector& Start, const FIntVector& End, FVector& OutGlobalPosition, FIntVector& OutVoxelPosition)
+{
+	FIntVector Diff = End - Start;
+	if (Diff.X != 0)
+	{
+		if (Diff.Y != 0 || Diff.Z != 0)
+		{
+			UE_LOG(LogVoxel, Error, TEXT("GetIntersection: Start and end should have 2 common coordinates"));
+			return false;
+		}
+	}
+	else if (Diff.Y != 0)
+	{
+		if (Diff.X != 0 || Diff.Z != 0)
+		{
+			UE_LOG(LogVoxel, Error, TEXT("GetIntersection: Start and end should have 2 common coordinates"));
+			return false;
+		}
+	}
+	else if (Diff.Z != 0)
+	{
+		if (Diff.X != 0 || Diff.Y != 0)
+		{
+			UE_LOG(LogVoxel, Error, TEXT("GetIntersection: Start and end should have 2 common coordinates"));
+			return false;
+		}
+	}
+
+	FIntVector RealStart(FMath::Min(Start.X, End.X), FMath::Min(Start.Y, End.Y), FMath::Min(Start.Z, End.Z));
+	FIntVector RealEnd(FMath::Max(Start.X, End.X), FMath::Max(Start.Y, End.Y), FMath::Max(Start.Z, End.Z));
+
+	bool bFound = false;
+	Data->BeginGet();
+	float OldValue = Data->GetValue(RealStart.X, RealStart.Y, RealStart.Z);
+	FIntVector OldPosition = RealStart;
+	for (int X = RealStart.X; X <= RealEnd.X; X++)
+	{
+		for (int Y = RealStart.Y; Y <= RealEnd.Y; Y++)
+		{
+			for (int Z = RealStart.Z; Z <= RealEnd.Z; Z++)
+			{
+				float Value = Data->GetValue(X, Y, Z);
+				FIntVector Position(X, Y, Z);
+
+				if ((OldValue > 0 && Value > 0) || (OldValue <= 0 && Value <= 0))
+				{
+					check(OldValue - Value != 0);
+					const float t = OldValue / (OldValue - Value);
+
+					FVector Q = t * static_cast<FVector>(Position) + (1 - t) * static_cast<FVector>(OldPosition);
+					OutGlobalPosition = LocalToGlobal(Q);
+					OutVoxelPosition = Position;
+					bFound = true;
+				}
+
+				OldValue = Value;
+				OldPosition = Position;
+
+				if (bFound)
+				{
+					break;
+				}
+			}
+			if (bFound)
+			{
+				break;
+			}
+		}
+		if (bFound)
+		{
+			break;
+		}
+	}
+	Data->EndGet();
+
+	return bFound;
+}
+
+FVector AVoxelWorld::GetNormal(const FIntVector& Position) const
+{
+	int X = Position.X;
+	int Y = Position.Y;
+	int Z = Position.Z;
+
+	Data->BeginGet();
+	FVector Gradient;
+	Gradient.X = Data->GetValue(X + 1, Y, Z) - Data->GetValue(X - 1, Y, Z);
+	Gradient.Y = Data->GetValue(X, Y + 1, Z) - Data->GetValue(X, Y - 1, Z);
+	Gradient.Z = Data->GetValue(X, Y, Z + 1) - Data->GetValue(X, Y, Z - 1);
+	Data->EndGet();
+
+	return Gradient.GetSafeNormal();
 }
 
 float AVoxelWorld::GetVoxelSize() const

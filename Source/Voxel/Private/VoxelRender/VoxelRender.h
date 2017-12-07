@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelBox.h"
-#include "TransitionDirection.h"
+#include "Direction.h"
 #include "VoxelProceduralMeshComponent.h"
 #include <deque>
 
@@ -75,7 +75,7 @@ public:
 
 	FChunkOctree* GetChunkOctreeAt(const FIntVector& Position) const;
 
-	FChunkOctree* GetAdjacentChunk(TransitionDirection Direction, const FIntVector& Position, int Size) const;
+	FChunkOctree* GetAdjacentChunk(EDirection Direction, const FIntVector& Position, int Size) const;
 
 	int GetDepthAt(const FIntVector& Position) const;
 
@@ -84,6 +84,8 @@ public:
 
 	// Needed when ChunksParent != World
 	FVector GetGlobalPosition(const FIntVector& LocalPosition);
+
+	void RemoveChunkFromQueue(FChunkOctree* Chunk);
 
 private:
 

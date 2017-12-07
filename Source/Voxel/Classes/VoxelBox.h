@@ -27,6 +27,16 @@ public:
 	{
 	}
 
+	FVoxelBox Translate(FIntVector Position)
+	{
+		return FVoxelBox(Min + Position, Max + Position);
+	}
+
+	FORCEINLINE FIntVector Size() const
+	{
+		return Max - Min + FIntVector(1, 1, 1);
+	}
+
 	/**
 	 * Checks whether the given location is inside this box.
 	 *
@@ -36,6 +46,11 @@ public:
 	FORCEINLINE bool IsInside(const int X, const int Y, const int Z) const
 	{
 		return ((X >= Min.X) && (X <= Max.X) && (Y >= Min.Y) && (Y <= Max.Y) && (Z >= Min.Z) && (Z <= Max.Z));
+	}
+
+	FORCEINLINE bool IsInside(const FIntVector& V) const
+	{
+		return IsInside(V.X, V.Y, V.Z);
 	}
 
 

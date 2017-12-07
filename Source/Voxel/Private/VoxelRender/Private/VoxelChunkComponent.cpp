@@ -59,11 +59,11 @@ void UVoxelChunkComponent::Init(FChunkOctree* NewOctree)
 	bCookCollisions = CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions();
 	/*if (bCookCollisions)
 	{
-	SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
 	else
 	{
-	SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}*/
 
 	FIntVector NewPosition = CurrentOctree->GetMinimalCornerPosition();
@@ -89,7 +89,7 @@ bool UVoxelChunkComponent::Update(bool bAsync)
 		SCOPE_CYCLE_COUNTER(STAT_UpdateUpdateNeighbors);
 		for (int i = 0; i < 6; i++)
 		{
-			TransitionDirection Direction = (TransitionDirection)i;
+			EDirection Direction = (EDirection)i;
 			FChunkOctree* Chunk = Render->GetAdjacentChunk(Direction, Position, Size);
 			if (Chunk)
 			{
@@ -153,14 +153,14 @@ void UVoxelChunkComponent::CheckTransitions()
 		const int Depth = Render->GetDepthAt(Position);
 		for (int i = 0; i < 6; i++)
 		{
-			auto Direction = (TransitionDirection)i;
+			auto Direction = (EDirection)i;
 			FChunkOctree* Chunk = Render->GetAdjacentChunk(Direction, Position, Size);
 			if (Chunk)
 			{
 				bool bThisHasHigherRes = Chunk->Depth > Depth;
 
 				check(Chunk->GetVoxelChunk());
-				if (bThisHasHigherRes != Chunk->GetVoxelChunk()->HasChunkHigherRes(InvertTransitionDirection(Direction)))
+				if (bThisHasHigherRes != Chunk->GetVoxelChunk()->HasChunkHigherRes(InvertDirection(Direction)))
 				{
 					Render->UpdateChunk(Chunk, true);
 				}
@@ -260,7 +260,7 @@ void UVoxelChunkComponent::SetVoxelMaterial(UMaterialInterface* Material)
 	SetMaterial(0, Material);
 }
 
-bool UVoxelChunkComponent::HasChunkHigherRes(TransitionDirection Direction)
+bool UVoxelChunkComponent::HasChunkHigherRes(EDirection Direction)
 {
 	return CurrentOctree->Depth != 0 && ChunkHasHigherRes[Direction];
 }
@@ -470,7 +470,7 @@ FVoxelPolygonizer* UVoxelChunkComponent::CreatePolygonizer(FAsyncPolygonizerTask
 			CurrentOctree->GetMinimalCornerPosition(),
 			ChunkHasHigherRes,
 			CurrentOctree->Depth != 0 && Render->World->GetComputeTransitions(),
-			CurrentOctree->Depth == 0 && Render->World->GetComputeExtendedCollisions(),
+			CurrentOctree->Depth <= Render->World->GetMaxDepthToGenerateCollisions() && Render->World->GetComputeExtendedCollisions(),
 			Render->World->GetEnableAmbientOcclusion(),
 			Render->World->GetRayMaxDistance(),
 			Render->World->GetRayCount(),

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "VoxelMaterial.h"
-#include "ConvolutionMatrix.h"
+#include "IQueuedWork.h"
 #include "VoxelTools.generated.h"
 
 class AVoxelWorld;
@@ -17,6 +17,24 @@ enum class EBlueprintSuccess : uint8
 	Failed
 };
 
+class FAsyncAddCrater : public IQueuedWork
+{
+public:
+	FAsyncAddCrater(FVoxelData* Data, const FIntVector LocalPosition, const int IntRadius, const float Radius, const uint8 BlackMaterialIndex, const uint8 AddedBlack, const float HardnessMultiplier);
+
+	void DoThreadedWork() override;
+	void Abandon() override;
+
+private:
+	FVoxelData* Data;
+	const FIntVector LocalPosition;
+	const int IntRadius;
+	const float Radius;
+	const uint8 BlackMaterialIndex;
+	const uint8 AddedBlack;
+	const float HardnessMultiplier;
+};
+
 /**
  * Blueprint tools for voxels
  */
@@ -27,7 +45,9 @@ class VOXEL_API UVoxelTools : public UObject
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
-		static void AddCrater(AVoxelWorld* World, const FVector Position, const float Radius, const float NoiseScale = 1, const bool bAsync = false, const float HardnessMultiplier = 1);
+		static void AddCrater(AVoxelWorld* World, const FVector Position, const float Radius, const uint8 BlackMaterialIndex, const uint8 AddedBlack = 150, const bool bAsync = false, const float HardnessMultiplier = 1);
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
+		static void AddCraterMultithreaded(AVoxelWorld* World, const FVector Position, const float Radius, const uint8 BlackMaterialIndex, const uint8 AddedBlack = 150, const bool bAsync = false, const float HardnessMultiplier = 1);
 
 	/**
 	 * Set value to positive or negative in a sphere
@@ -117,18 +137,6 @@ public:
 			bool bAsync = false, bool bDebugLines = false, bool bDebugPoints = true, float MinValue = -1, float MaxValue = 1);
 
 	/**
-	 * Import a VoxelAsset in the world
-	 * @param	World					Voxel world
-	 * @param	Asset					Asset to import
-	 * @param	Position				Position in world space
-	 * @param	bAdd					Add or remove?
-	 * @param	bForceUseOfAllVoxels	Set all the voxels to the asset values?
-	 * @param	bAsync					Update async?
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void ImportAsset(AVoxelWorld* World, UVoxelAsset* Asset, const FVector Position, const bool bAdd = true, const bool bPositionZIsBottom = true, const bool bForceUseOfAllVoxels = false, const bool bAsync = false);
-
-	/**
 	 * Get Voxel World from mouse world position and direction given by GetMouseWorldPositionAndDirection
 	 * @param	WorldPosition		Mouse world position
 	 * @param	WorldDirection		Mouse world direction
@@ -150,40 +158,4 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Voxel", Meta = (ExpandEnumAsExecs = "Branches"))
 		static void GetMouseWorldPositionAndDirection(APlayerController* PlayerController, FVector& WorldPosition, FVector& WorldDirection, EBlueprintSuccess& Branches);
-
-	/**
-	 * Water effect
-	 * @param	World				Voxel world
-	 * @param	Position			Position in world space
-	 * @param	Radius				Radius of the box in voxel space (-Radius < X < Radius ...)
-	 * @param	DownSpeed			Speed of the water going down
-	 * @param	LateralSpeed		Speed of the water going on sides
-	 * @param	bAsync				Update async
-	 * @param	ValueMultiplier		-ValueMultiplier will be set inside and ValueMultiplier outside
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "5"))
-		static void ApplyWaterEffect(AVoxelWorld* World, const int N, const bool bInit, UPARAM(ref) TArray<float>& Dens0, UPARAM(ref) TArray<float>& U0, UPARAM(ref) TArray<float>& V0, UPARAM(ref) TArray<float>& W0, const float Visc, const float Diff, const float Dt, UPARAM(ref) TArray<float>& Dens, UPARAM(ref) TArray<float>&U, UPARAM(ref) TArray<float>& V, UPARAM(ref) TArray<float>& W);
-
-	/**
-	 * Remove all blocks not connected to Position
-	 * @param	World					Voxel world
-	 * @param	Position				Position in world space
-	 * @param	Radius					Radius of the box in voxel space (-Radius < X < Radius ...)
-	 * @param	bBordersAreConnected	Whether to consider borders connected to Position. Useful to avoid removing parts that are connected outside of the box
-	 * @param	bAsync					Update async
-	 * @param	ValueMultiplier			-ValueMultiplier will be set inside and ValueMultiplier outside
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
-		static void RemoveNonConnectedBlocks(AVoxelWorld* World, FVector Position, float Radius, bool bBordersAreConnected = true, bool bAsync = false, float ValueMultiplier = 1);
-
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
-		static void TransformVoxelAsset(UVoxelAsset* InAsset, UVoxelAsset*& OutAsset, const FTransform& Transform);
-
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
-		static void DownscaleAsset(UVoxelAsset* InAsset, UVoxelAsset*& OutAsset, const int HalfOfDownscalingFactor);
-
-	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (AdvancedDisplay = "3"))
-		static void ApplyConvolutionToAsset(UVoxelAsset* InAsset, UVoxelAsset*& OutAsset, const F3DConvolutionMatrix& ConvolutionMatrix);
 };
