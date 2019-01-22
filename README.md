@@ -1,3 +1,1 @@
-# Voxel Plugin for Unreal Engine
-
-Main repo: https://github.com/Phyronnaz/MarchingCubes
+Repo moved to https://github.com/Phyronnaz/VoxelPlugin
